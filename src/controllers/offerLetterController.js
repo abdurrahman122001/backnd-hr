@@ -88,30 +88,58 @@ module.exports = {
       }
 
       // 4. Compose OpenAI prompt (ONLY SHOW GROSS)
-      const prompt = `
-Generate an offer letter for the following info. DO NOT show any salary breakup, just mention gross salary only.
-
-Company: ${company.name}
-Address: ${company.address}
-
-Candidate: ${candidateName}
-Position: ${position}
-Gross Salary (monthly): PKR ${grossSalary}
-Start Date: ${startDate}
-Reporting Time: ${reportingTime}
-Confirmation Deadline: ${confirmationDeadlineDate}
+const prompt = `
+Using the following data, fill in the brackets and compose an offer letter exactly in the format and style below. 
+Do not add, remove, or modify the sections. Insert the values at the relevant places.
 
 ---
+Company Name: ${company.name}
+Company Address: ${company.address}
+Candidate Name: ${candidateName}
+Position Title: ${position}
+Salary Amount: PKR ${grossSalary}
+Start Date: ${startDate}
+Reporting Time: ${reportingTime || "9:00 AM"}
+Office Address: ${company.address}
+Confirmation Deadline: ${confirmationDeadlineDate}
+
+Format and wording for the letter (fill the brackets):
+
 Subject: Welcome Aboard – Offer of Employment
 
-Dear ${candidateName},
+Dear [${candidateName}],
 
-We’re thrilled to have you join us as ${position} at ${company.name} with a gross monthly salary of PKR ${grossSalary}. Please join us on ${startDate} at ${reportingTime}.
+We’re thrilled to have you on board!
+
+After getting to know you during your recent interview, we were truly inspired by your passion, potential, and the energy you bring. It gives us great pleasure to officially offer you the position of [${position}] at [${company.name}].
+
+We believe you will be a valuable addition to our growing team, and we’re excited about what we can build together. This isn’t just a job – it’s a journey, and we’re looking forward to seeing you thrive with us.
+
+Your monthly gross salary will be PKR [${grossSalary}], paid through online bank transfer at the end of each month.
+
+If you accept this offer, your anticipated start date will be [${startDate}], and we look forward to welcoming you in person at our [${company.address}] by [${reportingTime || "9:00 AM"}].
+
+In this role, you’ll be working 45 hours per week, from Monday to Friday – a full week of opportunities to grow, collaborate, and contribute.
+
+To move forward, please confirm your acceptance of this offer by [${confirmationDeadlineDate}]. On your first day, we kindly ask that you bring:
+- All original educational and professional certificates
+- Original CNIC with a photocopy
+- Two recent passport-sized photographs
+
+By accepting this offer, you also agree to the terms set forth in our Employment Contract and Non-Disclosure Agreement (NDA), which we will share with you separately.
+
+We’re truly excited to have you join us. Your future teammates are just as eager to welcome you, support you, and learn from you as you are to begin this new chapter. Let’s make great things happen together!
 
 Warm regards,
 
 Human Resource Department
-      `.trim();
+
+Signature
+---
+
+Only output the formatted letter with all the values filled in.
+`.trim();
+
 
       const aiRes = await openai.chat.completions.create({
         model: "gpt-4o-mini",
