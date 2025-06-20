@@ -49,10 +49,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.set("io", io);
 
 // === Middleware ===
-app.use(cors({
-  origin: "http://localhost:8080", // your React dev server
-  credentials: true,               // allow cookies
-}));
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
