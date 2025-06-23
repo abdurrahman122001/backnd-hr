@@ -1,13 +1,13 @@
-const mongoose = require("mongoose");
+const { Schema, model } = require('mongoose');
 
-const CompanyProfileSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  address: { type: String },
-  phone: { type: String },
-  email: { type: String },
-  website: { type: String },
-  logoUrl: { type: String },
-  owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // Or "Employee" if that's your login model
+const CompanyProfileSchema = new Schema({
+  owner:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  name:     { type: String, required: true },
+  address:  { type: String, required: true },
+  address2: { type: String, default: "" }, // safe!
+  email:    { type: String, required: true },
+  phone:    { type: String, required: true },
+  website:  { type: String, default: "" }
 }, { timestamps: true });
 
-module.exports = mongoose.model("CompanyProfile", CompanyProfileSchema);
+module.exports = model('CompanyProfile', CompanyProfileSchema);

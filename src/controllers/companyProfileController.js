@@ -1,27 +1,27 @@
-const CompanyProfile = require("../models/CompanyProfile");
+const CompanyProfile = require('../models/CompanyProfile');
 
-// Create or Update (Upsert) profile for logged-in owner
+// Get company profile
+exports.getMyProfile = async (req, res) => {
+  try {
+    const profile = await CompanyProfile.findOne({ owner: req.user._id });
+    res.json({ profile });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load profile.' });
+  }
+};
 exports.upsertProfile = async (req, res) => {
   try {
-    const ownerId = req.user._id; // From auth middleware
+    const ownerId = req.user._id;
     const data = { ...req.body, owner: ownerId };
+
+    console.log("Incoming form data:", data); // <-- DEBUG LINE
 
     const profile = await CompanyProfile.findOneAndUpdate(
       { owner: ownerId },
-      data,
+      { $set: data },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
-    res.json({ profile });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
 
-// Get profile for logged-in owner
-exports.getMyProfile = async (req, res) => {
-  try {
-    const ownerId = req.user._id;
-    const profile = await CompanyProfile.findOne({ owner: ownerId });
     res.json({ profile });
   } catch (err) {
     res.status(500).json({ message: err.message });

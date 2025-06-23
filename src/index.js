@@ -49,7 +49,12 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.set("io", io);
 
 // === Middleware ===
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://admin.innand.com", "http://innand.com/",
+    credentials: true, // if you need cookies/auth
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
