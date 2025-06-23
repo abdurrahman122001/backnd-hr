@@ -14,8 +14,6 @@ exports.upsertProfile = async (req, res) => {
     const ownerId = req.user._id;
     const data = { ...req.body, owner: ownerId };
 
-    console.log("Incoming form data:", data); // <-- DEBUG LINE
-
     const profile = await CompanyProfile.findOneAndUpdate(
       { owner: ownerId },
       { $set: data },

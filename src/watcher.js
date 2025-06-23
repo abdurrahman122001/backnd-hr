@@ -14,6 +14,7 @@ const Employee = require("./models/Employees");
 const {
   generateAndSaveNda,
   generateAndSaveContract,
+  generateAndSaveSalaryCertificate, // <-- import it
 } = require("./services/ndaService");
 
 // Initialize IMAP connection
@@ -112,6 +113,14 @@ async function ensureDocsGenerated(emp) {
     const contractPath = await generateAndSaveContract(emp);
     if (contractPath && emp.contractPath !== contractPath) {
       emp.contractPath = contractPath;
+      emp.contractGenerated = true;
+      updated = true;
+    }
+    // Salary Certificate
+    const salaryCertPath = await generateAndSaveSalaryCertificate(emp);
+    if (salaryCertPath && emp.salaryCertificatePath !== salaryCertPath) {
+      emp.salaryCertificatePath = salaryCertPath;
+      emp.salaryCertificateGenerated = true;
       updated = true;
     }
     if (updated) await emp.save();

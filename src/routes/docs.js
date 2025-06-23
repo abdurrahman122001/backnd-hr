@@ -1,10 +1,10 @@
-// routes/docs.js
 const express = require("express");
 const router = express.Router();
 const Employee = require("../models/Employees");
 const {
   fetchNdaPdf,
   fetchContractPdf,
+  fetchSalaryCertificatePdf, // <--- ADD THIS
 } = require("../services/ndaService");
 
 // GET NDA PDF by employeeId
@@ -26,6 +26,18 @@ router.get("/contract/:employeeId", async (req, res) => {
   if (!pdf) return res.status(404).send("Contract file missing.");
   res.set("Content-Type", "application/pdf");
   res.set("Content-Disposition", "inline; filename=Contract.pdf");
+  res.send(pdf);
+});
+
+// GET Salary Certificate PDF by employeeId
+router.get("/salary-certificate/:employeeId", async (req, res) => {
+  const emp = await Employee.findById(req.params.employeeId).lean();
+  if (!emp) 
+    return res.status(404).send("Employee not found.");
+  const pdf = fetchSalaryCertificatePdf(req.params.employeeId);
+  if (!pdf) return res.status(404).send("Salary Certificate file missing.");
+  res.set("Content-Type", "application/pdf");
+  res.set("Content-Disposition", "inline; filename=SalaryCertificate.pdf");
   res.send(pdf);
 });
 

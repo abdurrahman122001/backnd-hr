@@ -10,18 +10,20 @@ exports.getDesignations = async (req, res) => {
   }
 };
 
-// CREATE a new designation
 exports.createDesignation = async (req, res) => {
   try {
-    const { name, owner } = req.body;
-    if (!name || !owner) {
-      return res.status(400).json({ error: "Name and owner are required." });
-    }
-    const designation = new Designation({ name, owner });
-    await designation.save();
-    res.status(201).json(designation);
+    const { name, department, owner } = req.body;
+
+    // department must be an ObjectId (string is okay, Mongoose will cast)
+    const desig = await Designation.create({
+      name,
+      department,   // <---- MAKE SURE you use this!
+      owner,
+    });
+
+    res.status(201).json(desig);
   } catch (err) {
-    res.status(500).json({ error: "Failed to create designation." });
+    res.status(400).json({ error: err.message });
   }
 };
 
