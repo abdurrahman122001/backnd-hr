@@ -6,11 +6,13 @@ const SalarySettingsSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      unique: true,            // one settings doc per user
+      unique: true, // one settings doc per user
     },
+    enabledPersonalFields: { type: [String], default: [] },
+    enabledEmploymentFields: { type: [String], default: [] },
     enabledSalaryFields: {
       type: [String],
-      default: [],             // start empty
+      default: [], // start empty
     },
     enabledDeductionFields: {
       type: [String],
@@ -20,7 +22,4 @@ const SalarySettingsSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model(
-  "SalarySettings",
-  SalarySettingsSchema
-);
+module.exports = mongoose.model("SalarySettings", SalarySettingsSchema);
