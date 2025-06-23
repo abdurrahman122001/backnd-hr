@@ -51,10 +51,11 @@ app.set("io", io);
 // === Middleware ===
 app.use(
   cors({
-    origin: "http://admin.innand.com", "http://innand.com/",
+    origin: ["http://admin.innand.com", "http://innand.com"],
     credentials: true, // if you need cookies/auth
   })
 );
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
