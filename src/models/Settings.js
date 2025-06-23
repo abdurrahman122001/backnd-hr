@@ -17,7 +17,7 @@ const SettingsSchema = new Schema({
     type:    Boolean,
     default: true,
   },
-
+  allowEmployeesMultipleShifts: { type: Boolean, default: false },
 }, {
   timestamps: true,
 });

@@ -7,18 +7,21 @@ exports.getSettings = async (req, res) => {
   res.json({
     timezone: s?.timezone || 'UTC',
     useSystemTimezone: s?.useSystemTimezone ?? true,
+    allowEmployeesMultipleShifts: s?.allowEmployeesMultipleShifts ?? false,
   });
 };
 
+// UPDATE settings, including new field
 exports.updateSettings = async (req, res) => {
-  const { timezone, useSystemTimezone } = req.body;
+  const { timezone, useSystemTimezone, allowEmployeesMultipleShifts } = req.body;
   const s = await Settings.findOneAndUpdate(
     { owner: req.user._id },
-    { timezone, useSystemTimezone },
+    { timezone, useSystemTimezone, allowEmployeesMultipleShifts },
     { upsert: true, new: true }
   ).lean();
   res.json({
     timezone: s.timezone,
     useSystemTimezone: s.useSystemTimezone,
+    allowEmployeesMultipleShifts: s.allowEmployeesMultipleShifts,
   });
 };

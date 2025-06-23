@@ -11,6 +11,7 @@ const ShiftSchema = new Schema({
   graceTime:    { type: String },
   isHourly:     { type: Boolean, default: false },
   setHours:     { type: Number },
+  allowMultipleShifts: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = model("Shift", ShiftSchema);

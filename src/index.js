@@ -55,8 +55,9 @@ app.use(
     credentials: true, // if you need cookies/auth
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 
 // === Public routes ===
 app.use("/api/auth", authRouter);
@@ -79,6 +80,7 @@ app.use("/api/employee-salary", requireAuth, employeeSalaryRouter);  // <--- THI
 app.use("/api/departments", requireAuth, departmentsRouter);
 app.use("/api/designations", requireAuth, designationsRouter);
 app.use("/api/salary-settings", requireAuth, salarySettingsRoutes);
+app.use("/api/send-slip-email", require("./routes/sendSlipEmail"));
 
 app.post(
   "/api/hierarchy/create",

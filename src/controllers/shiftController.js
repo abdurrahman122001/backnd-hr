@@ -122,3 +122,27 @@ exports.deleteShift = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.setAllowMultipleShifts = async (req, res) => {
+  try {
+    const { allowMultipleShifts } = req.body;
+    // Save to company/user/org/global settings (adjust model as needed)
+    await Shift.updateOne(
+      { owner: req.user._id }, // or company/org id
+      { $set: { allowMultipleShifts: !!allowMultipleShifts } },
+      { upsert: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getAllowMultipleShifts = async (req, res) => {
+  try {
+    const settings = await Shift.findOne({ owner: req.user._id }); // or company/org id
+    res.json({ allowMultipleShifts: !!settings?.allowMultipleShifts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
