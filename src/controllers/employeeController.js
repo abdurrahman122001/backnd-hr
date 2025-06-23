@@ -52,6 +52,7 @@ exports.createEmployee = async (req, res) => {
       bankAccount:     body.bankAccount,
 
       email:           body.email,
+      companyEmail:    body.companyEmail,
       rt:              body.rt,
       salaryOffered:   body.salaryOffered,
       leaveEntitlement:body.leaveEntitlement,

@@ -30,7 +30,7 @@ const EmployeeSchema = new Schema(
         message: "Email cannot be empty",
       },
     },
-
+    companyEmail: {type: String , default: ""},
     fatherOrHusbandName: { type: String },
     photographUrl: { type: String },
     dateOfBirth: { type: String },
