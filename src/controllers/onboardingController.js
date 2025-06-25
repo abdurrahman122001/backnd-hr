@@ -98,8 +98,7 @@ module.exports = {
       const html = `
         <div>
           <p>Dear ${candidateName},</p>
-          <p>Thank you for your interest in joining <strong>${process.env.COMPANY_NAME || "our company"}</strong> as a <strong>${position}</strong> in <strong>${department}</strong> department.</p>
-          <p>To proceed with your onboarding, kindly reply to this email and attach clear scans of:</p>
+          <p>kindly Send these required Documents:</p>
           <ul>
             <li>Your CNIC (front and back, only JPG or PNG format)</li>
             <li>Your latest CV/Resume (PDF)</li>
