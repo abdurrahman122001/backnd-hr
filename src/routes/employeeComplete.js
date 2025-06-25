@@ -1,15 +1,10 @@
-// backend/src/routes/employees.js
 const express = require("express");
 const Employee = require("../models/Employees");
 const requireAuth = require("../middleware/auth");
 
 const router = express.Router();
 
-// ─────────────────────────────────────────────────────────────────────────
 // GET /api/employees/:id/complete
-//    - Returns the AI‐populated fields for that employee so the React form
-//      can display them read‐only.
-// ─────────────────────────────────────────────────────────────────────────
 router.get("/:id/complete", async (req, res) => {
   try {
     const { id } = req.params;
@@ -19,7 +14,6 @@ router.get("/:id/complete", async (req, res) => {
     if (!emp) {
       return res.status(404).json({ success: false, error: "Employee not found" });
     }
-    // Return exactly those fields as JSON
     return res.json({
       success: true,
       data: {
@@ -39,74 +33,56 @@ router.get("/:id/complete", async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────
 // PUT /api/employees/:id/complete
-//    - Accepts the “remaining” fields from the form and merges them into
-//      the Employee document.
-// ─────────────────────────────────────────────────────────────────────────
 router.put("/:id/complete", async (req, res) => {
   try {
     const { id } = req.params;
-    // Destructure all possible form fields
-    const {
-      photographUrl,
-      gender,
-      maritalStatus,
-      religion,
-      latestQualification,
-      presentAddress,
-      permanentAddress,
-      bankName,
-      bankAccountNumber,
-      nomineeName,
-      nomineeRelation,
-      nomineeCnic,
-      nomineeEmergencyNo,
-      department,
-      designation,
-      joiningDate,
-
-      // Added editable fields:
-      name,
-      email,
-      cnic,
-      dateOfBirth,
-      fatherOrHusbandName,
-      nationality,
-      phone,
-    } = req.body;
-
     const emp = await Employee.findById(id);
     if (!emp) {
       return res.status(404).json({ success: false, error: "Employee not found" });
     }
 
-    // Merge fields if present in request, otherwise leave unchanged
-    emp.photographUrl = photographUrl || emp.photographUrl;
-    emp.gender = gender || emp.gender;
-    emp.maritalStatus = maritalStatus || emp.maritalStatus;
-    emp.religion = religion || emp.religion;
-    emp.latestQualification = latestQualification || emp.latestQualification;
-    emp.presentAddress = presentAddress || emp.presentAddress;
-    emp.permanentAddress = permanentAddress || emp.permanentAddress;
-    emp.bankName = bankName || emp.bankName;
-    emp.bankAccountNumber = bankAccountNumber || emp.bankAccountNumber;
-    emp.nomineeName = nomineeName || emp.nomineeName;
-    emp.nomineeRelation = nomineeRelation || emp.nomineeRelation;
-    emp.nomineeCnic = nomineeCnic || emp.nomineeCnic;
-    emp.nomineeEmergencyNo = nomineeEmergencyNo || emp.nomineeEmergencyNo;
-    emp.department = department || emp.department;
-    emp.designation = designation || emp.designation;
-    emp.joiningDate = joiningDate || emp.joiningDate;
+    // Only update fields if present (and not null/undefined)
+    const updatableFields = [
+      "photographUrl",
+      "gender",
+      "maritalStatus",
+      "religion",
+      "latestQualification",
+      "presentAddress",
+      "permanentAddress",
+      "bankName",
+      "bankAccountNumber",
+      "nomineeName",
+      "nomineeRelation",
+      "nomineeCnic",
+      "nomineeEmergencyNo",
+      "department",
+      "designation",
+      "joiningDate",
+      "name",
+      "email",
+      "cnic",
+      "dateOfBirth",
+      "fatherOrHusbandName",
+      "nationality",
+      "phone",
+    ];
 
-    // Newly editable fields
-    emp.name = name || emp.name;
-    emp.email = email || emp.email;
-    emp.cnic = cnic || emp.cnic;
-    emp.dateOfBirth = dateOfBirth || emp.dateOfBirth;
-    emp.fatherOrHusbandName = fatherOrHusbandName || emp.fatherOrHusbandName;
-    emp.nationality = nationality || emp.nationality;
-    emp.phone = phone || emp.phone;
+    updatableFields.forEach((field) => {
+      if (
+        Object.prototype.hasOwnProperty.call(req.body, field) &&
+        req.body[field] !== undefined &&
+        req.body[field] !== null
+      ) {
+        emp[field] = req.body[field];
+      }
+    });
+
+    // Fix: Ensure owner is always set (hardcoded fallback)
+    if (!emp.owner) {
+      emp.owner = "6838b0b708e8629ffab534ee";
+    }
 
     await emp.save();
     return res.json({ success: true, data: { _id: emp._id.toString() } });

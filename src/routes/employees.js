@@ -55,5 +55,20 @@ router.get('/', getAllEmployees);
 router.post('/', createEmployee);
 router.get('/list', list);
 
+// Add this route after all other GETs (before PATCH/POST)
+router.get('/:id', async (req, res) => {
+  try {
+    const emp = await Employee.findOne({
+      _id: req.params.id,
+      owner: req.user._id, // extra safety: only fetch user's own employees
+    }).lean();
+    if (!emp) return res.status(404).json({ error: 'Employee not found' });
+    res.json({ status: 'success', employee: emp });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 router.patch('/:id', updateEmployee);
 module.exports = router;

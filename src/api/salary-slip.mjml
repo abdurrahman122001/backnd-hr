@@ -1,35 +1,55 @@
 <mjml>
   <mj-head>
     <mj-attributes>
-      <mj-all font-family="Segoe UI, Arial, sans-serif" color="#172554" font-size="16px" />
+      <mj-all font-family="Segoe UI, Arial, sans-serif" color="#172554" font-size="15px" />
+      <mj-text font-size="15px" color="#172554" />
       <mj-table font-size="15px" color="#172554" padding="0" />
     </mj-attributes>
     <mj-style inline="inline">
-      .heading { font-size:21px;font-weight:800;color:#172554; }
-      .company { font-size:18px;font-weight:700;color:#172554;}
-      .address { font-size:15px;color:#64748b;}
-      .paytitle { font-size:16px;font-weight:600;color:#172554;}
+      @media only screen and (max-width:480px) {
+        .header-table td { display:block !important; width:100% !important; text-align:left !important; }
+        .company-logo { margin-bottom:10px !important; }
+        .company-name { font-size:17px !important; }
+        .company-address { font-size:14px !important; }
+        .salary-cols td { font-size:13px !important; }
+        .sectiontitle { font-size:16px !important; }
+      }
+      .header-gradient {
+        background: linear-gradient(90deg, #f1f5fb 0%, #dbeafe 100%);
+        border-radius: 14px 14px 0 0;
+        padding: 28px 18px 18px 18px;
+      }
+      .header-table td { vertical-align:top; padding-bottom:6px; }
+      .company-logo { border-radius:8px; }
+      .company-name { font-size:20px;font-weight:700;color:#172554; letter-spacing:.5px;}
+      .company-address { font-size:15px;color:#64748b;}
+      .paytitle { font-size:16px;font-weight:700;color:#172554;}
       .subtle { font-size:14px;color:#64748b;}
-      .sectiontitle { font-weight:700;font-size:17px; color:#172554; margin-bottom:5px;}
-      .label { color:#64748b;font-weight:500;}
-      .value { color:#172554;font-weight:500;}
+      .sectiontitle { font-weight:700;font-size:17px; color:#172554; margin-bottom:10px;}
+      .label { color:#64748b; font-weight:500;}
       .blue { color:#2563eb !important; font-weight:700;}
-      .netbox { background:#f1f5f9; border-radius:10px; padding:12px 22px;}
-      .tablehead { font-weight:700; }
+      .red { color:#ef4444; font-weight:700;}
+      .netbox {
+        background: linear-gradient(90deg, #f1f5f9 0%, #dbeafe 100%);
+        border-radius:10px;
+        padding:18px 28px 12px 28px;
+        margin-top:14px;
+      }
+      .netbox td { padding: 7px 0; }
     </mj-style>
   </mj-head>
   <mj-body background-color="#f8fafc">
-    <mj-section padding="24px 0">
-      <mj-column background-color="#fff" border-radius="14px" padding="28px 18px">
-        <!-- Header Row -->
-        <mj-table>
+    <!-- Header Gradient -->
+    <mj-section background-color="#f1f5fb" padding="0 0 0 0" border-radius="14px 14px 0 0">
+      <mj-column padding="28px 18px 18px 18px">
+        <mj-table css-class="header-table" width="100%">
           <tr>
-            <td>
-              <img src="https://i.imgur.com/rx7YbcM.png" width="48" height="48" alt="Logo" style="border-radius:7px;"/>
+            <td style="width:54px;">
+              <img class="company-logo" src="https://i.imgur.com/rx7YbcM.png" width="48" height="48" alt="Logo" />
             </td>
             <td>
-              <div class="company">{{company.name}}</div>
-              <div class="address">{{company.address}}</div>
+              <div class="company-name">{{company.name}}</div>
+              <div class="company-address">{{company.address}}</div>
             </td>
             <td style="text-align:right;">
               <div class="paytitle">Pay slip – {{slipMonthYear}}</div>
@@ -40,51 +60,48 @@
       </mj-column>
     </mj-section>
 
-    <!-- Employee Information Section -->
-    <mj-section padding="10px 0">
-      <!-- First Column -->
+    <!-- Employee Info (2 columns) -->
+    <mj-section background-color="#fff" border-radius="0 0 14px 14px">
       <mj-column width="50%">
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Name:</span> <span style="font-weight:700; color:#172554;">{{employee.name}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Department:</span> <span>{{employee.department}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Designation:</span> <span>{{employee.designation}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Joining Date:</span> <span>{{employee.joiningDate}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Email:</span> <a href="mailto:{{employee.email}}" style="color:#2563eb; text-decoration:none;">{{employee.email}}</a></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Phone:</span> <span>{{employee.phone}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Marital Status:</span> <span>{{employee.maritalStatus}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Qualification:</span> <span>{{employee.latestQualification}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">CNIC:</span> <span>{{employee.cnic}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Bank Name:</span> <span>{{employee.bankName}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Bank Account #:</span> <span>{{employee.bankAccountNumber}}</span></mj-text>
+        <mj-text><span class="label">Name:</span> <span style="font-weight:700; color:#172554;">{{employee.name}}</span></mj-text>
+        <mj-text><span class="label">Department:</span> <span>{{employee.department}}</span></mj-text>
+        <mj-text><span class="label">Designation:</span> <span>{{employee.designation}}</span></mj-text>
+        <mj-text><span class="label">Joining Date:</span> <span>{{employee.joiningDate}}</span></mj-text>
+        <mj-text><span class="label">Email:</span> <a href="mailto:{{employee.email}}" style="color:#2563eb; text-decoration:none;">{{employee.email}}</a></mj-text>
+        <mj-text><span class="label">Phone:</span> <span>{{employee.phone}}</span></mj-text>
+        <mj-text><span class="label">Marital Status:</span> <span>{{employee.maritalStatus}}</span></mj-text>
+        <mj-text><span class="label">Qualification:</span> <span>{{employee.latestQualification}}</span></mj-text>
+        <mj-text><span class="label">CNIC:</span> <span>{{employee.cnic}}</span></mj-text>
+        <mj-text><span class="label">Bank Name:</span> <span>{{employee.bankName}}</span></mj-text>
+        <mj-text><span class="label">Bank Account #:</span> <span>{{employee.bankAccountNumber}}</span></mj-text>
       </mj-column>
-      <!-- Second Column -->
       <mj-column width="50%">
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Present Address:</span> <span>{{employee.presentAddress}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Permanent Address:</span> <span>{{employee.permanentAddress}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Gender:</span> <span>{{employee.gender}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Religion:</span> <span>{{employee.religion}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Date of Birth:</span> <span>{{employee.dateOfBirth}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Nominee Name:</span> <span>{{employee.nomineeName}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Nominee Relation:</span> <span>{{employee.nomineeRelation}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Nominee CNIC:</span> <span>{{employee.nomineeCnic}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Nominee Emergency #:</span> <span>{{employee.nomineeEmergencyNo}}</span></mj-text>
-        <mj-text font-size="15px" padding="4px 0"><span style="color:#64748b;">Zakat Exempted:</span> <span>{{employee.zakatExempted}}</span></mj-text>
+        <mj-text><span class="label">Present Address:</span> <span>{{employee.presentAddress}}</span></mj-text>
+        <mj-text><span class="label">Permanent Address:</span> <span>{{employee.permanentAddress}}</span></mj-text>
+        <mj-text><span class="label">Gender:</span> <span>{{employee.gender}}</span></mj-text>
+        <mj-text><span class="label">Religion:</span> <span>{{employee.religion}}</span></mj-text>
+        <mj-text><span class="label">Date of Birth:</span> <span>{{employee.dateOfBirth}}</span></mj-text>
+        <mj-text><span class="label">Nominee Name:</span> <span>{{employee.nomineeName}}</span></mj-text>
+        <mj-text><span class="label">Nominee Relation:</span> <span>{{employee.nomineeRelation}}</span></mj-text>
+        <mj-text><span class="label">Nominee CNIC:</span> <span>{{employee.nomineeCnic}}</span></mj-text>
+        <mj-text><span class="label">Nominee Emergency #:</span> <span>{{employee.nomineeEmergencyNo}}</span></mj-text>
+        <mj-text><span class="label">Zakat Exempted:</span> <span>{{employee.zakatExempted}}</span></mj-text>
       </mj-column>
     </mj-section>
 
-
-    <!-- Salary/Deductions Table (Side by Side) -->
-    <mj-section>
-      <mj-column width="100%">
+    <!-- Salary & Allowance + Deductions (Side by Side) -->
+    <mj-section background-color="#fff">
+      <mj-column width="50%">
         <mj-text css-class="sectiontitle">Salary & Allowance</mj-text>
-        <mj-table>
+        <mj-table css-class="salary-cols" width="100%">
           <tr>
-            <td class="tablehead">Item</td>
-            <td class="tablehead" style="text-align:right;">Amount</td>
+            <td style="font-weight:700;">Item</td>
+            <td style="font-weight:700;text-align:right;">Amount</td>
           </tr>
           {{#each salaryRows}}
             <tr>
               <td class="label">{{label}}</td>
-              <td class="value" style="text-align:right;">{{value}}</td>
+              <td style="text-align:right;">{{value}}</td>
             </tr>
           {{/each}}
           <tr>
@@ -93,17 +110,17 @@
           </tr>
         </mj-table>
       </mj-column>
-      <mj-column width="100%">
+      <mj-column width="50%">
         <mj-text css-class="sectiontitle">Deductions</mj-text>
-        <mj-table>
+        <mj-table css-class="salary-cols" width="100%">
           <tr>
-            <td class="tablehead">Item</td>
-            <td class="tablehead" style="text-align:right;">Amount</td>
+            <td style="font-weight:700;">Item</td>
+            <td style="font-weight:700;text-align:right;">Amount</td>
           </tr>
           {{#each deductionRows}}
             <tr>
               <td class="label">{{label}}</td>
-              <td class="value" style="text-align:right;">{{value}}</td>
+              <td style="text-align:right;">{{value}}</td>
             </tr>
           {{/each}}
           <tr>
@@ -113,62 +130,31 @@
         </mj-table>
       </mj-column>
     </mj-section>
-        <!-- Net Salary Highlighted Box -->
-    <mj-section>
-      <mj-column width="100%">
-        <mj-text css-class="netbox">
-          <div class="sectiontitle" style="margin-bottom:2px;">Net Salary</div>
-          <div class="blue" style="font-size:22px;margin-bottom:4px;">Rs. {{netSalary}}</div>
-          <div style="font-size:15px;color:#334155;margin-bottom:2px;">
-            <b>Amount in words:</b> Rupees {{netSalaryWords}} Only
-          </div>
-          <div style="font-size:15px;color:#64748b;"><b>Mode of Payment:</b> Online Transfer</div>
-        </mj-text>
-      </mj-column>
-    </mj-section>
 
-    <!-- Loan / PF / Leave (Three Columns) -->
-    <mj-section>
-      <mj-column width="33%">
-        <mj-text css-class="sectiontitle">Loan Details</mj-text>
-        <mj-table>
-          {{#each loanRows}}
-            <tr>
-              <td class="label">{{label}}</td>
-              <td class="value" style="text-align:right;">{{value}}</td>
-            </tr>
-          {{/each}}
-        </mj-table>
-      </mj-column>
-      <mj-column width="33%">
-        <mj-text css-class="sectiontitle">Provident Fund</mj-text>
-        <mj-table>
-          {{#each providentRows}}
-            <tr>
-              <td class="label">{{label}}</td>
-              <td class="value" style="text-align:right;">{{value}}</td>
-            </tr>
-          {{/each}}
-        </mj-table>
-      </mj-column>
-      <mj-column width="33%">
-        <mj-text css-class="sectiontitle">Leave Records</mj-text>
-        <mj-table>
-          {{#each leaveRows}}
-            <tr>
-              <td class="label">{{label}}</td>
-              <td class="value" style="text-align:right;">{{value}}</td>
-            </tr>
-          {{/each}}
+    <!-- Net Salary Highlighted Box -->
+    <mj-section background-color="#f1f7fe" border-radius="10px">
+      <mj-column>
+        <mj-table width="100%">
+          <tr>
+            <td style="font-weight:500;">Net Salary</td>
+            <td style="font-weight:700; color:#2563eb; font-size:17px;">Rs. {{netSalary}}</td>
+          </tr>
+          <tr>
+            <td style="font-weight:500;">Amount in Words</td>
+            <td class="blue">Rupees {{netSalaryWords}} Only</td>
+          </tr>
+          <tr>
+            <td style="font-weight:500;">Mode of Payment</td>
+            <td>Online Transfer</td>
+          </tr>
         </mj-table>
       </mj-column>
     </mj-section>
-
 
     <mj-section>
       <mj-column>
         <mj-text font-size="12px" color="#64748b" align="center">
-          This is a system-generated slip. For any queries, contact HR.
+          This is a system-generated slip. For any queries, contact <span class="red">HR</span>.
         </mj-text>
       </mj-column>
     </mj-section>
