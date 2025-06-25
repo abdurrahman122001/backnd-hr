@@ -29,7 +29,7 @@ const hierarchyController = require("./controllers/hierarchyController");
 const salarySettingsRoutes = require("./routes/salarySettings")
 // Middleware
 const requireAuth = require("./middleware/auth");
-
+const onboardingRouter = require("./routes/onBoarding");
 // Model imports
 const Employee   = require("./models/Employees");
 const Attendance = require("./models/Attendance");
@@ -51,7 +51,7 @@ app.set("io", io);
 // === Middleware ===
 app.use(
   cors({
-    origin: ["http://admin.innand.com", "http://innand.com"],
+    origin: ["http://localhost:8081", "http://localhost:8080", "http://localhost:8082" ],
     credentials: true, // if you need cookies/auth
   })
 );
@@ -81,6 +81,7 @@ app.use("/api/departments", requireAuth, departmentsRouter);
 app.use("/api/designations", requireAuth, designationsRouter);
 app.use("/api/salary-settings", requireAuth, salarySettingsRoutes);
 app.use("/api/send-slip-email", require("./routes/sendSlipEmail"));
+app.use("/api/onboarding", onboardingRouter);
 
 app.post(
   "/api/hierarchy/create",

@@ -63,3 +63,22 @@ exports.createEmployee = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+// PATCH /api/employees/:id
+exports.updateEmployee = async (req, res) => {
+  try {
+    // Only allow updates to employees owned by the current user
+    const emp = await Employee.findOneAndUpdate(
+      { _id: req.params.id, owner: req.user._id }, // match by id + owner
+      req.body,                                    // update with incoming fields
+      { new: true, runValidators: true }
+    ).populate('shifts', 'name'); // optional: re-populate shifts for fresh data
+
+    if (!emp) {
+      return res.status(404).json({ error: 'Employee not found or unauthorized' });
+    }
+
+    res.json(emp);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};

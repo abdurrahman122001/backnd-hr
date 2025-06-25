@@ -3,7 +3,7 @@ const express  = require('express');
 const router   = express.Router();
 
 const Employee = require('../models/Employees');
-const { getAllEmployees, createEmployee, list } = require('../controllers/employeeController');
+const { getAllEmployees, createEmployee, updateEmployee, list } = require('../controllers/employeeController');
 
 router.get('/', async (req, res) => {
   try {
@@ -55,5 +55,5 @@ router.get('/', getAllEmployees);
 router.post('/', createEmployee);
 router.get('/list', list);
 
-
+router.patch('/:id', updateEmployee);
 module.exports = router;

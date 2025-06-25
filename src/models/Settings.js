@@ -18,6 +18,7 @@ const SettingsSchema = new Schema({
     default: true,
   },
   allowEmployeesMultipleShifts: { type: Boolean, default: false },
+  timeFormat: { type: String, enum: ['12', '24'], default: '24' },
 }, {
   timestamps: true,
 });

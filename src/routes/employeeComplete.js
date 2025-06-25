@@ -10,7 +10,7 @@ const router = express.Router();
 //    - Returns the AI‐populated fields for that employee so the React form
 //      can display them read‐only.
 // ─────────────────────────────────────────────────────────────────────────
-router.get("/:id/complete", requireAuth, async (req, res) => {
+router.get("/:id/complete", async (req, res) => {
   try {
     const { id } = req.params;
     const emp = await Employee.findById(id).select(
@@ -44,7 +44,7 @@ router.get("/:id/complete", requireAuth, async (req, res) => {
 //    - Accepts the “remaining” fields from the form and merges them into
 //      the Employee document.
 // ─────────────────────────────────────────────────────────────────────────
-router.put("/:id/complete", requireAuth, async (req, res) => {
+router.put("/:id/complete", async (req, res) => {
   try {
     const { id } = req.params;
     // Destructure all possible form fields
