@@ -32,7 +32,7 @@ const SalarySlipSchema = new Schema({
     vehicleLoan:            { type: Number, default: 0 },
     otherLoans:             { type: Number, default: 0 },
   },
-  advanceSalaryDeductions:{ type: Number, default: 0 },
+  advanceSalaryDeduction:{ type: Number, default: 0 },
   medicalInsurance:        { type: Number, default: 0 },
   lifeInsurance:           { type: Number, default: 0 },
   penalties:               { type: Number, default: 0 },

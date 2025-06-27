@@ -48,7 +48,7 @@ exports.createEmployee = async (req, res) => {
       position:        body.position,
       joiningDate:     body.joiningDate,
       cnic:            body.cnic,
-      
+      dateOfBirth:    body.dateOfBirth,
       bankAccount:     body.bankAccount,
 
       email:           body.email,

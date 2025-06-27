@@ -57,7 +57,7 @@ const EmployeeSchema = new Schema(
     // Employment Details
     department: { type: String },
     designation: { type: String },
-    joiningDate: { type: Date },
+    joiningDate: { type: String },
     shifts: [{ type: Schema.Types.ObjectId, ref: "Shift" }], // <--- ADD THIS LINE
 
     // Leave Entitlement

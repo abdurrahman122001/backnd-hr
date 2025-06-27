@@ -27,9 +27,9 @@ const docsRouter = require("./routes/docs");
 const employeeSalaryRouter = require("./routes/employeeSalary");
 const hierarchyController = require("./controllers/hierarchyController");
 const salarySettingsRoutes = require("./routes/salarySettings")
-// Middleware
+const loansRoutes = require('./routes/loans');
 const requireAuth = require("./middleware/auth");
-const onboardingRouter = require("./routes/onBoarding");
+const onboardingRouter = require("./routes/onboarding");
 // Model imports
 const Employee   = require("./models/Employees");
 const Attendance = require("./models/Attendance");
@@ -39,7 +39,14 @@ const { startWatcher } = require("./watcher");
 
 const app    = express();
 // Wrap express in an HTTP server for Socket-IO
-const server = http.createServer(app);
+const sslOptions = {
+  key: fs.readFileSync("/root/server.key"),
+  cert: fs.readFileSync("/root/server.crt"),
+};
+
+
+// Create HTTPS server
+const server = https.createServer(sslOptions, app);
 
 // Initialize Socket-IO
 const { Server } = require("socket.io");
@@ -51,7 +58,7 @@ app.set("io", io);
 // === Middleware ===
 app.use(
   cors({
-    origin: ["http://admin.innand.com", "http://innand.com", "http://apis.innand.com" ],
+    origin: ["http://localhost:8081", "http://localhost:8080"],
     credentials: true, // if you need cookies/auth
   })
 );
@@ -82,7 +89,7 @@ app.use("/api/designations", requireAuth, designationsRouter);
 app.use("/api/salary-settings", requireAuth, salarySettingsRoutes);
 app.use("/api/send-slip-email", require("./routes/sendSlipEmail"));
 app.use("/api/onboarding", onboardingRouter);
-
+app.use("/api/loans", loansRoutes);
 app.post(
   "/api/hierarchy/create",
   requireAuth,

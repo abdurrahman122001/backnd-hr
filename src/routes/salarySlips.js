@@ -8,12 +8,13 @@ const Employee    = require('../models/Employees');
 
 // List of all allowance fields [Label, modelKey]
 const allowances = [
-  ['Basic', 'basic'],
+  ['Basic Pay', 'basic'],
   ['Dearness Allowance', 'dearnessAllowance'],
   ['House Rent Allowance', 'houseRentAllowance'],
   ['Conveyance Allowance', 'conveyanceAllowance'],
   ['Medical Allowance', 'medicalAllowance'],
   ['Utility Allowance', 'utilityAllowance'],
+  
   ['Overtime Compensation', 'overtimeComp'],
   ['Dislocation Allowance', 'dislocationAllowance'],
   ['Leave Encashment', 'leaveEncashment'],
@@ -27,32 +28,36 @@ const allowances = [
 
 // List of all deduction fields [Label, modelKey]
 const deductions = [
-  ['Leave Deductions', 'leaveDeductions'],
-  ['Late Deductions', 'lateDeductions'],
+  ['Leave Deduction', 'leaveDeductions'],
+  ['Late Deduction', 'lateDeductions'],
   ['EOBI Deduction', 'eobiDeduction'],
   ['SESSI Deduction', 'sessiDeduction'],
   ['Provident Fund Deduction', 'providentFundDeduction'],
   ['Gratuity Fund Deduction', 'gratuityFundDeduction'],
   ['Vehicle Loan Deduction', 'vehicleLoanDeduction'],
-  ['Other Loan Deductions', 'otherLoanDeductions'],
-  ['Advance Salary Deductions', 'advanceSalaryDeductions'],
+  ['Other Loan Deduction', 'otherLoanDeductions'],
+  ['Advance Salary Deduction', 'advanceSalaryDeduction'],
   ['Medical Insurance', 'medicalInsurance'],
   ['Life Insurance', 'lifeInsurance'],
   ['Penalties', 'penalties'],
-  ['Other Deductions', 'otherDeductions'],
+  ['Other Deduction', 'otherDeductions'],
   ['Tax Deduction', 'taxDeduction'],
 ];
 
-// GET all slips for the logged-in owner, newest first
+// GET salary slips - all slips or filtered by employee
 router.get('/', requireAuth, async (req, res) => {
   try {
-    // find all your employees
-    const emps = await Employee.find({ owner: req.user._id }).select('_id');
-    const ids = emps.map(e => e._id);
+    const { employee } = req.query; // ?employee=xxx
 
-    // populate name, department & designation
+    // Query object
+    let query = {};
+    if (employee) {
+      query.employee = employee; // Filter by employee if param is given
+    }
+
+    // Find and populate
     const slips = await SalarySlip
-      .find({ employee: { $in: ids } })
+      .find(query)
       .populate('employee')
       .sort({ createdAt: -1 });
 
@@ -63,6 +68,7 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
+// Download PDF
 router.get('/:id/download', requireAuth, async (req, res) => {
   try {
     const slip = await SalarySlip
@@ -72,9 +78,11 @@ router.get('/:id/download', requireAuth, async (req, res) => {
     if (!slip) {
       return res.status(404).json({ status: 'error', message: 'Not found' });
     }
-    if (slip.employee.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ status: 'error', message: 'Forbidden' });
-    }
+
+    // (OPTIONAL) If you want to keep owner check, uncomment below:
+    // if (slip.employee.owner.toString() !== req.user._id.toString()) {
+    //   return res.status(403).json({ status: 'error', message: 'Forbidden' });
+    // }
 
     // Setup PDF
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
@@ -107,7 +115,7 @@ router.get('/:id/download', requireAuth, async (req, res) => {
       .text(`Name: ${slip.employee.name}`, 40, y0)
       .text(`Department: ${slip.employee.department}`, 320, y0)
       .text(`Designation: ${slip.employee.designation}`, 40, y0 + 15)
-      .text(`Joining Date: ${slip.employee.joiningDate.toISOString().slice(0, 10)}`, 320, y0 + 15)
+      .text(`Joining Date: ${slip.employee.joiningDate ? slip.employee.joiningDate.toISOString().slice(0, 10) : ''}`, 320, y0 + 15)
       .moveDown(2);
 
     // — SALARY & ALLOWANCES vs DEDUCTIONS —

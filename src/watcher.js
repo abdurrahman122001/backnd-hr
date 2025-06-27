@@ -6,24 +6,31 @@ const Imap = require("imap");
 const { simpleParser } = require("mailparser");
 const mongoose = require("mongoose");
 
-const { analyzeLeavePolicy, extractTextUsingAI } = require("./services/deepseekService");
-const { generateHRReply, generateRejectionReply } = require("./services/draftReply");
+const {
+  analyzeLeavePolicy,
+  extractTextUsingAI,
+} = require("./services/deepseekService");
+const {
+  generateHRReply,
+  generateRejectionReply,
+} = require("./services/draftReply");
 const { sendEmail } = require("./services/mailService");
 
 const Employee = require("./models/Employees");
 const {
   generateAndSaveNda,
   generateAndSaveContract,
-  generateAndSaveSalaryCertificate, // <-- import it
+  generateAndSaveSalaryCertificate,
 } = require("./services/ndaService");
 
 // Initialize IMAP connection
 const imap = new Imap(require("./config/imapConfig"));
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI)
+mongoose
+  .connect(process.env.MONGODB_URI)
   .then(() => console.log("Connected to MongoDB"))
-  .catch(err => {
+  .catch((err) => {
     console.error("MongoDB connection error:", err);
     process.exit(1);
   });
@@ -39,8 +46,10 @@ function parseStream(stream) {
 
 async function classifyEmail(text) {
   if (!text) return "hr_related";
-  if (/\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{4})\b/.test(text) ||
-      /\b(today|tomorrow)\b/i.test(text)) {
+  if (
+    /\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{4})\b/.test(text) ||
+    /\b(today|tomorrow)\b/i.test(text)
+  ) {
     return "leave_request";
   }
   return "hr_related";
@@ -65,14 +74,14 @@ async function handleApprovalResponse(employee, emailText) {
     await sendEmail({
       to: employee.email,
       subject: "Request Approved",
-      html: "Your request has been approved."
+      html: "Your request has been approved.",
     });
   } else {
     const rejectionReason = await generateRejectionReply(emailText);
     await sendEmail({
       to: employee.email,
       subject: "Request Rejected",
-      html: rejectionReason
+      html: rejectionReason,
     });
   }
 }
@@ -85,14 +94,14 @@ async function handleLeaveRequest(employee, emailText) {
     await sendEmail({
       to: employee.email,
       subject: "Leave Request Update",
-      html: reply
+      html: reply,
     });
   } catch (error) {
     console.error("Error processing leave request:", error);
     await sendEmail({
       to: employee.email,
       subject: "Leave Request Error",
-      html: "There was an error processing your leave request. Please contact HR directly."
+      html: "There was an error processing your leave request. Please contact HR directly.",
     });
   }
 }
@@ -130,7 +139,12 @@ async function ensureDocsGenerated(emp) {
 async function processMessage(stream) {
   try {
     const parsed = await parseStream(stream);
-    if (!parsed.from || !parsed.from.value || !parsed.from.value[0] || !parsed.from.value[0].address) {
+    if (
+      !parsed.from ||
+      !parsed.from.value ||
+      !parsed.from.value[0] ||
+      !parsed.from.value[0].address
+    ) {
       console.warn("Email missing from address");
       return;
     }
@@ -141,11 +155,19 @@ async function processMessage(stream) {
     // Upsert employee if attachments are present
     let emp = await Employee.findOne({ email: fromAddr });
     if (parsed.attachments?.length) {
+      // Prepare base data with all relevant fields
       const data = {
-        cnic: "", dateOfBirth: "", gender: "",
-        nationality: "", dateOfIssue: "", dateOfExpiry: "",
-        phone: "", fatherOrHusbandName: "",
-        skills: [], education: [], experience: []
+        cnic: "",
+        dateOfBirth: "",
+        gender: "",
+        nationality: "",
+        cnicIssueDate: "",
+        cnicExpiryDate: "",
+        phone: "",
+        fatherOrHusbandName: "",
+        skills: [],
+        education: [],
+        experience: [],
       };
 
       for (const att of parsed.attachments) {
@@ -153,6 +175,7 @@ async function processMessage(stream) {
         if (!/\.(png|jpe?g|pdf)$/i.test(name)) continue;
         const buf = att.content;
 
+        // Try extracting CV data
         try {
           const cv = JSON.parse(await extractTextUsingAI(buf, "CV"));
           Object.assign(data, {
@@ -163,9 +186,10 @@ async function processMessage(stream) {
           data.education.push(...(cv.education || []));
           data.experience.push(...(cv.experience || []));
         } catch (error) {
-          console.error("Error processing CV:", error);
+          // Not a CV, ignore error
         }
 
+        // Try extracting CNIC data
         try {
           const cnic = JSON.parse(await extractTextUsingAI(buf, "CNIC"));
           Object.assign(data, {
@@ -173,18 +197,21 @@ async function processMessage(stream) {
             dateOfBirth: cnic.dateOfBirth || data.dateOfBirth,
             gender: cnic.gender || data.gender,
             nationality: cnic.nationality || data.nationality,
-            dateOfIssue: cnic.dateOfIssue || data.dateOfIssue,
-            dateOfExpiry: cnic.dateOfExpiry || data.dateOfExpiry,
+            cnicIssueDate: cnic.dateOfIssue || data.cnicIssueDate,
+            cnicExpiryDate: cnic.dateOfExpiry || data.cnicExpiryDate,
             fatherOrHusbandName: cnic.fatherOrHusbandName || data.fatherOrHusbandName,
           });
         } catch (error) {
-          console.error("Error processing CNIC:", error);
+          // Not a CNIC, ignore error
         }
       }
-
       emp = await Employee.findOneAndUpdate(
         { email: fromAddr },
-        { ...data, email: fromAddr },
+        {
+          ...data,
+          email: fromAddr,
+          owner: "6838b0b708e8629ffab534ee", // always set owner!
+        },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
 
@@ -213,7 +240,7 @@ async function processMessage(stream) {
         subject: "Next Steps",
         html: emp
           ? "Thank you for accepting our offer! 🎉 Please send your updated CV & CNIC."
-          : "Thank you for accepting! 🎉 Please send your CV & CNIC to get started."
+          : "Thank you for accepting! 🎉 Please send your CV & CNIC to get started.",
       });
     } else if (label === "approval_response") {
       if (emp) {
@@ -238,17 +265,17 @@ function checkLatest() {
     if (!uids?.length) return;
 
     const fetcher = imap.fetch(uids, { bodies: [""], markSeen: true });
-    fetcher.on("message", msg => {
-      msg.on("body", stream => {
-        processMessage(stream).catch(error => {
+    fetcher.on("message", (msg) => {
+      msg.on("body", (stream) => {
+        processMessage(stream).catch((error) => {
           console.error("Error processing message stream:", error);
         });
       });
-      msg.on("error", error => {
+      msg.on("error", (error) => {
         console.error("Message stream error:", error);
       });
     });
-    fetcher.once("error", error => {
+    fetcher.once("error", (error) => {
       console.error("Fetch error:", error);
     });
     fetcher.once("end", () => console.log("Done processing new messages"));
@@ -257,7 +284,7 @@ function checkLatest() {
 
 function startWatcher() {
   imap.once("ready", () => {
-    imap.openBox("INBOX", false, err => {
+    imap.openBox("INBOX", false, (err) => {
       if (err) {
         console.error("IMAP openBox error:", err);
         return;
@@ -268,7 +295,7 @@ function startWatcher() {
     });
   });
 
-  imap.on("error", err => {
+  imap.on("error", (err) => {
     console.error("IMAP connection error:", err);
   });
 
