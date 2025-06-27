@@ -57,7 +57,7 @@ app.set("io", io);
 // === Middleware ===
 app.use(
   cors({
-    origin: ["http://localhost:8081", "http://localhost:8080"],
+    origin: ["https://admin.innand.com", "http://localhost:8080"],
     credentials: true, // if you need cookies/auth
   })
 );
