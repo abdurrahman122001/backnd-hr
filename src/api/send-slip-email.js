@@ -25,22 +25,22 @@ function formatPhoneNumber(phone) {
   if (!phone) return "-";
   // Remove all non-digits
   let num = phone.replace(/[^\d]/g, "");
+  if (!num) return "-"; // <--- Fix: If nothing left, return "-"
+
   // Should start with '92' and have 11 or 12 digits
   if (num.startsWith("92") && num.length === 12) {
-    // Remove extra digit if accidentally included
     num = num.slice(0, 12);
   }
   if (num.startsWith("92") && num.length === 12) {
-    // +92 311 2944111 (Pakistan number, 12 digits)
     return `+${num.slice(0, 2)} ${num.slice(2, 5)} ${num.slice(5)}`;
   }
   if (num.startsWith("92") && num.length === 11) {
-    // +92 311 294411 (Pakistan number, 11 digits)
     return `+${num.slice(0, 2)} ${num.slice(2, 5)} ${num.slice(5)}`;
   }
   // fallback: just return as +<number>
   return `+${num}`;
 }
+
 
 
     // Field Label Maps
@@ -80,12 +80,16 @@ const DEDUCTIONS_LABELS = {
 };
 
 const PROFILE_LABELS = {
-  name: "Name",
+  name: "Employee Name",
+  fatherOrHusbandName: "Father/Husband Name",
   dateOfBirth: "Date of Birth",
+  nationality: "Nationality",
   gender: "Gender",
   maritalStatus: "Marital Status",
   religion: "Religion",
   cnic: "CNIC",
+  cnicIssueDate: "CNIC Issue Date",
+  cnicExpiryDate: "CNIC Expiry Date",
   latestQualification: "Latest Qualification",
   phone: "Phone",
   email: "Email",
