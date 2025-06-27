@@ -2,12 +2,10 @@
 require("dotenv").config();
 
 const express      = require("express");
-// const http         = require("http");
+const http         = require("http");
 const mongoose     = require("mongoose");
 const cors         = require("cors");
 const cron         = require("node-cron");
-const https = require("https");
-const fs = require("fs");
 
 // Route imports
 const authRouter             = require("./routes/auth");
@@ -41,12 +39,8 @@ const { startWatcher } = require("./watcher");
 
 const app    = express();
 // Wrap express in an HTTP server for Socket-IO
-const sslOptions = {
-  key: fs.readFileSync("/root/server.key"),
-  cert: fs.readFileSync("/root/server.crt"),
-};
+const server = http.createServer(app);
 
-const server = https.createServer(sslOptions, app);
 // Initialize Socket-IO
 const { Server } = require("socket.io");
 const io = new Server(server, { cors: { origin: "*" } });
