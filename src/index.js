@@ -29,7 +29,7 @@ const hierarchyController = require("./controllers/hierarchyController");
 const salarySettingsRoutes = require("./routes/salarySettings")
 const loansRoutes = require('./routes/loans');
 const requireAuth = require("./middleware/auth");
-const onboardingRouter = require("./routes/onboarding");
+const onboardingRouter = require("./routes/onBoarding");
 // Model imports
 const Employee   = require("./models/Employees");
 const Attendance = require("./models/Attendance");
