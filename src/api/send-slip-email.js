@@ -8,6 +8,41 @@ const formatCurrency = (val) =>
     ? `Rs. ${Number(val).toLocaleString()}`
     : "-";
 
+function formatDate(dt) {
+  if (!dt) return "-";
+  try {
+    return new Date(dt).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }).replace(/ (\d{4})$/, ", $1");
+  } catch (e) {
+    return dt;
+  }
+}
+
+function formatPhoneNumber(phone) {
+  if (!phone) return "-";
+  // Remove all non-digits
+  let num = phone.replace(/[^\d]/g, "");
+  // Should start with '92' and have 11 or 12 digits
+  if (num.startsWith("92") && num.length === 12) {
+    // Remove extra digit if accidentally included
+    num = num.slice(0, 12);
+  }
+  if (num.startsWith("92") && num.length === 12) {
+    // +92 311 2944111 (Pakistan number, 12 digits)
+    return `+${num.slice(0, 2)} ${num.slice(2, 5)} ${num.slice(5)}`;
+  }
+  if (num.startsWith("92") && num.length === 11) {
+    // +92 311 294411 (Pakistan number, 11 digits)
+    return `+${num.slice(0, 2)} ${num.slice(2, 5)} ${num.slice(5)}`;
+  }
+  // fallback: just return as +<number>
+  return `+${num}`;
+}
+
+
     // Field Label Maps
 const ALLOWANCES_LABELS = {
   basic: "Basic Pay",
@@ -46,25 +81,25 @@ const DEDUCTIONS_LABELS = {
 
 const PROFILE_LABELS = {
   name: "Name",
-  email: "Email",
-  phone: "Phone",
-  presentAddress: "Present Address",
-  permanentAddress: "Permanent Address",
-  cnic: "CNIC",
+  dateOfBirth: "Date of Birth",
   gender: "Gender",
+  maritalStatus: "Marital Status",
+  religion: "Religion",
+  cnic: "CNIC",
+  latestQualification: "Latest Qualification",
+  phone: "Phone",
+  email: "Email",
+  permanentAddress: "Permanent Address",
+  presentAddress: "Present Address",
+  bankName: "Bank Name",
+  bankAccountNumber: "Bank Account Number",
   department: "Department",
   designation: "Designation",
-  bankAccountNumber: "Bank Account Number",
-  bankName: "Bank Name",
-  latestQualification: "Latest Qualification",
   joiningDate: "Joining Date",
-  maritalStatus: "Marital Status",
-  dateOfBirth: "Date of Birth",
-  religion: "Religion",
   nomineeName: "Nominee Name",
-  nomineeRelation: "Nominee Relation",
   nomineeCnic: "Nominee CNIC",
-  nomineeEmergencyNo: "Nominee No",
+  nomineeRelation: "Relation with Nominee",
+  nomineeEmergencyNo: "Nominee Number",
 };
 const LEAVE_TYPES = [
   { label: "Casual", key: "casual" },
@@ -73,23 +108,7 @@ const LEAVE_TYPES = [
   { label: "WOP", key: "wop" },
   { label: "Other", key: "other" },
 ];
-const LOAN_LABELS = {
-  pfLoanAmount: "PF Loan Amount",
-  pfLoanPaid: "PF Loan Paid",
-  pfLoanBalancePrincipal: "PF Loan Balance Principal",
-  pfLoanBalanceMarkup: "PF Loan Balance Markup",
-  pfLoanTotalBalance: "PF Loan Net Balance",
-  vehicleLoanAmount: "Vehicle Loan Amount",
-  vehicleLoanPaid: "Vehicle Loan Paid",
-  vehicleLoanBalancePrincipal: "Vehicle Loan Balance Principal",
-  vehicleLoanBalanceMarkup: "Vehicle Loan Balance Markup",
-  vehicleLoanTotalBalance: "Vehicle Loan Net Balance",
-  otherLoanAmount: "Other Loan Amount",
-  otherLoanPaid: "Other Loan Paid",
-  otherLoanBalancePrincipal: "Other Loan Balance Principal",
-  otherLoanBalanceMarkup: "Other Loan Balance Markup",
-  otherLoanTotalBalance: "Other Loan Net Balance",
-};
+
 
 
 const PROVIDENT_FUND_FIELDS = [
@@ -123,6 +142,52 @@ function padRows(htmlRows, count) {
 }
 
 function renderLoanTable(loans = {}) {
+  // Find loan fields present
+  const LOAN_FIELDS = [
+    { label: "PF Loan Amount", key: "pfLoanAmount" },
+    { label: "PF Loan Paid", key: "pfLoanPaid" },
+    { label: "PF Loan Balance Principal", key: "pfLoanBalancePrincipal" },
+    { label: "PF Loan Balance Markup", key: "pfLoanBalanceMarkup" },
+    { label: "PF Loan Net Balance", key: "pfLoanTotalBalance" },
+    { label: "Vehicle Loan Amount", key: "vehicleLoanAmount" },
+    { label: "Vehicle Loan Paid", key: "vehicleLoanPaid" },
+    { label: "Vehicle Loan Balance Principal", key: "vehicleLoanBalancePrincipal" },
+    { label: "Vehicle Loan Balance Markup", key: "vehicleLoanBalanceMarkup" },
+    { label: "Vehicle Loan Net Balance", key: "vehicleLoanTotalBalance" },
+    { label: "Other Loan Amount", key: "otherLoanAmount" },
+    { label: "Other Loan Paid", key: "otherLoanPaid" },
+    { label: "Other Loan Balance Principal", key: "otherLoanBalancePrincipal" },
+    { label: "Other Loan Balance Markup", key: "otherLoanBalanceMarkup" },
+    { label: "Other Loan Net Balance", key: "otherLoanTotalBalance" }
+  ];
+  // Only keep columns where value exists in loans
+  const visibleFields = LOAN_FIELDS.filter(f => loans.hasOwnProperty(f.key));
+  if (visibleFields.length === 0) return "";
+
+  // Group by loan type for rows
+  const types = [
+    { name: "PF Loan", keys: ["pfLoanAmount", "pfLoanPaid", "pfLoanBalancePrincipal", "pfLoanBalanceMarkup", "pfLoanTotalBalance"] },
+    { name: "Vehicle Loan", keys: ["vehicleLoanAmount", "vehicleLoanPaid", "vehicleLoanBalancePrincipal", "vehicleLoanBalanceMarkup", "vehicleLoanTotalBalance"] },
+    { name: "Other Loan", keys: ["otherLoanAmount", "otherLoanPaid", "otherLoanBalancePrincipal", "otherLoanBalanceMarkup", "otherLoanTotalBalance"] }
+  ];
+
+  // Filter out types that have no visible keys
+  const visibleTypes = types.filter(type =>
+    type.keys.some(k => loans.hasOwnProperty(k))
+  );
+  if (visibleTypes.length === 0) return "";
+
+  // Find which columns to show (dynamic, for just the checked fields)
+  const usedColumns = Array.from(
+    new Set(
+      visibleTypes.flatMap(type => type.keys.filter(k => loans.hasOwnProperty(k)))
+    )
+  );
+
+  // Map col key to label
+  const colLabel = {};
+  LOAN_FIELDS.forEach(f => (colLabel[f.key] = f.label));
+
   return `
     <div style="margin-bottom: 24px;">
       <div style="font-weight:bold; color:#1d4ed8; background:#dbeafe; border-radius:8px 8px 0 0; padding:8px 18px;">
@@ -132,34 +197,14 @@ function renderLoanTable(loans = {}) {
         <thead>
           <tr style="background:#f1f5f9;">
             <th style="padding:10px 6px; border:1px solid #e5e7eb;">Type</th>
-            <th style="padding:10px 6px; border:1px solid #e5e7eb;">Amount Paid (This Month)</th>
-            <th style="padding:10px 6px; border:1px solid #e5e7eb;">Amount Paid (Prev. Month(s))</th>
-            <th style="padding:10px 6px; border:1px solid #e5e7eb;">Balance (Principal)</th>
-            <th style="padding:10px 6px; border:1px solid #e5e7eb;">Balance (Markup)</th>
-            <th style="padding:10px 6px; border:1px solid #e5e7eb;">Net Balance</th>
+            ${usedColumns.map(k => `<th style="padding:10px 6px; border:1px solid #e5e7eb;">${colLabel[k]}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
-          ${["pfLoan", "vehicleLoan", "otherLoan"].map(type => `
+          ${visibleTypes.map(type => `
             <tr>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">
-                ${LOAN_LABELS[`${type}Amount`].replace("Amount", "").replace("Loan ", "Loan")}
-              </td>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">
-                ${loans[`${type}Amount`] ?? "-"}
-              </td>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">
-                ${loans[`${type}Paid`] ?? "-"}
-              </td>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">
-                ${loans[`${type}BalancePrincipal`] ?? "-"}
-              </td>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">
-                ${loans[`${type}BalanceMarkup`] ?? "-"}
-              </td>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">
-                ${loans[`${type}TotalBalance`] ?? "-"}
-              </td>
+              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${type.name}</td>
+              ${usedColumns.map(k => type.keys.includes(k) ? `<td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${loans[k] ?? "-"}</td>` : `<td></td>`).join("")}
             </tr>
           `).join("")}
         </tbody>
@@ -168,36 +213,77 @@ function renderLoanTable(loans = {}) {
   `;
 }
 
+
 function renderLeaveTable(leaves = {}) {
+  // Extract actual present fields (e.g., casualEntitled, sickEntitled, etc.)
+  const types = ["casual", "sick", "annual", "wop", "other"];
+  const cols = ["Entitled", "AvailedYTD", "AvailedMTH", "Balance"];
+  // Only types/fields present in leaves
+  const present = types.map(type => {
+    const row = {};
+    cols.forEach(col => {
+      const key = `${type}${col}`;
+      if (leaves.hasOwnProperty(key)) row[col] = leaves[key];
+    });
+    return { type, row };
+  }).filter(r => Object.keys(r.row).length > 0);
+
+  // If no leave data, return nothing
+  if (present.length === 0) return "";
+
+  // Find which columns to show (union of present)
+  const presentCols = Array.from(new Set(present.flatMap(r => Object.keys(r.row))));
+
+  const colLabel = {
+    Entitled: "Entitled",
+    AvailedYTD: "Availed (YTD)",
+    AvailedMTH: "Availed (MTH)",
+    Balance: "Balance"
+  };
+  const typeLabel = {
+    casual: "Casual",
+    sick: "Sick",
+    annual: "Annual",
+    wop: "WOP",
+    other: "Other"
+  };
+
   return `
-    <div style="margin: 24px 0; ">
+    <div style="margin: 24px 0;">
       <div style="font-weight:bold; color:#1d4ed8; background:#dbeafe; border-radius:8px 8px 0 0; padding:8px 18px;">Leave Records</div>
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; background:#f8fafc;">
         <thead>
           <tr style="background:#f1f5f9;">
             <th style="padding:10px 6px; border:1px solid #e5e7eb;">Leave Type</th>
-            <th style="padding:10px 6px; border:1px solid #e5e7eb;">Entitled</th>
-            <th style="padding:10px 6px; border:1px solid #e5e7eb;">Availed (YTD)</th>
-            <th style="padding:10px 6px; border:1px solid #e5e7eb;">Availed (MTH)</th>
-            <th style="padding:10px 6px; border:1px solid #e5e7eb;">Balance</th>
+            ${presentCols.map(c => `<th style="padding:10px 6px; border:1px solid #e5e7eb;">${colLabel[c]}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
-          ${LEAVE_TYPES.map(({ label, key }) => `
-            <tr>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${label}</td>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${leaves[`${key}Entitled`] ?? "-"}</td>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${leaves[`${key}AvailedYTD`] ?? "-"}</td>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${leaves[`${key}AvailedMTH`] ?? "-"}</td>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${leaves[`${key}Balance`] ?? "-"}</td>
-            </tr>
-          `).join("")}
+          ${present.map(({ type, row }) =>
+            `<tr>
+              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${typeLabel[type] || type}</td>
+              ${presentCols.map(col =>
+                `<td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${row[col] ?? "-"}</td>`
+              ).join("")}
+            </tr>`
+          ).join("")}
         </tbody>
       </table>
     </div>
   `;
 }
+
 function renderProvidentFundTable(data = {}) {
+  const fields = [
+    { label: "Provident Fund Balance Brought Forward", key: "providentFundBalanceBF" },
+    { label: "Employee Provident Fund Contribution", key: "employeeProvidentFundContribution" },
+    { label: "Employer Provident Fund Contribution", key: "employerProvidentFundContribution" },
+    { label: "Provident Fund Withdrawal", key: "providentFundWithdrawal" },
+    { label: "Provident Fund Profit", key: "providentFundProfit" },
+    { label: "Provident Fund Balance", key: "providentFundBalance" },
+  ];
+  const visibleFields = fields.filter(f => data.hasOwnProperty(f.key));
+  if (visibleFields.length === 0) return "";
   return `
     <div style="margin-bottom: 24px;">
       <div style="font-weight:bold; color:#1d4ed8; background:#dbeafe; border-radius:8px 8px 0 0; padding:8px 18px;">
@@ -206,13 +292,13 @@ function renderProvidentFundTable(data = {}) {
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; background:#f8fafc;">
         <thead>
           <tr style="background:#f1f5f9;">
-            ${PROVIDENT_FUND_FIELDS.map(field => `<th style="padding:10px 6px; border:1px solid #e5e7eb;">${field.label}</th>`).join("")}
+            ${visibleFields.map(f => `<th style="padding:10px 6px; border:1px solid #e5e7eb;">${f.label}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
           <tr>
-            ${PROVIDENT_FUND_FIELDS.map(field =>
-              `<td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${data[field.key] ?? "-"}</td>`
+            ${visibleFields.map(f =>
+              `<td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${data[f.key] ?? "-"}</td>`
             ).join("")}
           </tr>
         </tbody>
@@ -221,7 +307,18 @@ function renderProvidentFundTable(data = {}) {
   `;
 }
 
+
 function renderGratuityFundTable(data = {}) {
+  const fields = [
+    { label: "Gratuity Fund Balance Brought Forward", key: "gratuityFundBalanceBF" },
+    { label: "Employee Gratuity Fund Contribution", key: "employeeGratuityFundContribution" },
+    { label: "Employer Gratuity Fund Contribution", key: "employerGratuityFundContribution" },
+    { label: "Gratuity Fund Withdrawal", key: "gratuityFundWithdrawal" },
+    { label: "Gratuity Fund Profit", key: "gratuityFundProfit" },
+    { label: "Gratuity Fund Balance", key: "gratuityFundBalance" },
+  ];
+  const visibleFields = fields.filter(f => data.hasOwnProperty(f.key));
+  if (visibleFields.length === 0) return "";
   return `
     <div style="margin-bottom: 24px;">
       <div style="font-weight:bold; color:#1d4ed8; background:#dbeafe; border-radius:8px 8px 0 0; padding:8px 18px;">
@@ -230,13 +327,13 @@ function renderGratuityFundTable(data = {}) {
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; background:#f8fafc;">
         <thead>
           <tr style="background:#f1f5f9;">
-            ${GRATUITY_FUND_FIELDS.map(field => `<th style="padding:10px 6px; border:1px solid #e5e7eb;">${field.label}</th>`).join("")}
+            ${visibleFields.map(f => `<th style="padding:10px 6px; border:1px solid #e5e7eb;">${f.label}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
           <tr>
-            ${GRATUITY_FUND_FIELDS.map(field =>
-              `<td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${data[field.key] ?? "-"}</td>`
+            ${visibleFields.map(f =>
+              `<td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${data[f.key] ?? "-"}</td>`
             ).join("")}
           </tr>
         </tbody>
@@ -244,6 +341,7 @@ function renderGratuityFundTable(data = {}) {
     </div>
   `;
 }
+
 
 
 function buildSalarySlipHtml({
@@ -272,17 +370,30 @@ function buildSalarySlipHtml({
     for (let i = 0; i < rows; i++) {
       html += "<tr>";
       for (let j = 0; j < colCount; j++) {
-        const idx = i + rows * j;
+        const idx = i * colCount + j;
         const key = fields[idx];
+        // Only set border if not last row
+        const borderStyle =
+          i === rows - 1 ? "" : "border-bottom:1px solid #e5e7eb;";
         if (key) {
           html += `
-          <td style="vertical-align:top; min-width:200px; word-break:break-word; overflow-wrap:break-word; border-bottom:1px solid #e5e7eb; padding-top: 15px; padding-bottom:15px; padding-right:12px;">
-            <label style="font-size:0.95rem; font-weight:500; color:#6b7280;">${labelObj[key] || PROFILE_LABELS[key] || key}</label>
-            <p style="color:#111827; margin:2px 0 0 0;">
-              ${empObj[key] !== null && empObj[key] !== undefined && empObj[key] !== "" ? empObj[key] : "-"}
-            </p>
-          </td>
-        `;
+            <td style="vertical-align:top; min-width:200px; word-break:break-word; overflow-wrap:break-word; ${borderStyle} padding-top: 15px; padding-bottom:15px; padding-right:12px;">
+              <label style="font-size:0.95rem; font-weight:500; color:#6b7280;">${labelObj?.[key] || PROFILE_LABELS[key] || key}</label>
+                <p style="color:#111827; margin:2px 0 0 0;">
+                  ${
+                    (empObj[key] !== null && empObj[key] !== undefined && empObj[key] !== "")
+                      ? (
+                          (key === "phone" || key === "nomineeEmergencyNo")
+                            ? formatPhoneNumber(empObj[key])
+                            : (key === "dateOfBirth" || key === "joiningDate")
+                              ? formatDate(empObj[key])
+                              : empObj[key]
+                        )
+                      : "-"
+                  }
+                </p>
+            </td>
+          `;
         } else {
           html += "<td></td>";
         }
@@ -323,31 +434,33 @@ function buildSalarySlipHtml({
     return { rows, total };
   }
 
-  const loansHtml = renderLoanTable(loans);
-  const leavesHtml = renderLeaveTable(leaves);
-  const providentFundHtml = renderProvidentFundTable(providentFund || {});
-  const gratuityFundHtml = renderGratuityFundTable(gratuityFund || {});
+  const loansHtml = loans && Object.keys(loans).length ? renderLoanTable(loans) : "";
+  const leavesHtml = leaves && Object.keys(leaves).length ? renderLeaveTable(leaves) : "";
+  const providentFundHtml = providentFund && Object.keys(providentFund).length ? renderProvidentFundTable(providentFund) : "";
+  const gratuityFundHtml = gratuityFund && Object.keys(gratuityFund).length ? renderGratuityFundTable(gratuityFund) : "";
 
-const { rows: earningsRows, total: totalEarnings } = renderSalaryTable(
-  compensation || {},
-  labels?.compensation || {}
-);
-const { rows: deductionsRows, total: totalDeductions } = renderDeductionsTable(
-  deductions || {},
-  labels?.deductions || {}
-);
 
-const maxRows = Math.max(earningsRows.length, deductionsRows.length);
-const paddedEarningsRows = padRows(earningsRows, maxRows);
-const paddedDeductionsRows = padRows(deductionsRows, maxRows);
+  const { rows: earningsRows, total: totalEarnings } = renderSalaryTable(
+    compensation || {},
+    labels?.compensation || {}
+  );
+  const { rows: deductionsRows, total: totalDeductions } = renderDeductionsTable(
+    deductions || {},
+    labels?.deductions || {}
+  );
 
-const earningsHtml = paddedEarningsRows.join("");
-const deductionsHtml = paddedDeductionsRows.join("");
+  const maxRows = Math.max(earningsRows.length, deductionsRows.length);
+  const paddedEarningsRows = padRows(earningsRows, maxRows);
+  const paddedDeductionsRows = padRows(deductionsRows, maxRows);
+
+  const earningsHtml = paddedEarningsRows.join("");
+  const deductionsHtml = paddedDeductionsRows.join("");
 
   const employeeTable = renderEmployeeTable(
     employee || {},
     labels?.employee || {}
   );
+
 
   // The rest is **your existing HTML**...
   return `<!DOCTYPE html>
@@ -397,7 +510,7 @@ const deductionsHtml = paddedDeductionsRows.join("");
                 <div>${earningsHtml}</div>
                 <div style="border-top:1px solid #bfdbfe; padding-top:8px; margin-top:12px;">
                   <div style="display:flex; justify-content:space-between; font-weight:700; color:#1d4ed8;">
-                    <span>Total Salary Additions</span>
+                    <span>Total Additions</span>
                     <span style="margin-left: auto;">${formatCurrency(totalEarnings)}</span>
                   </div>
                 </div>
@@ -482,9 +595,17 @@ module.exports = async function sendSlipEmail(req, res) {
       providentFund,  // <-- Add this if you use a nested structure
       gratuityFund,
       labels,
-      monthYear,
+      monthYear: monthYearFromBody,
       email,
     } = req.body;
+
+        let monthYear = monthYearFromBody;
+    if (!monthYear) {
+      monthYear = new Date().toLocaleDateString("en-GB", {
+        month: "long",
+        year: "numeric",
+      });
+    }
 
     // Backend net salary calculation
     const totalEarnings = Object.values(compensation || {}).reduce(

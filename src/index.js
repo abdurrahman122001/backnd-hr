@@ -33,6 +33,7 @@ const onboardingRouter = require("./routes/onBoarding");
 // Model imports
 const Employee   = require("./models/Employees");
 const Attendance = require("./models/Attendance");
+const sendSlipEmail = require("./routes/sendSlipEmail");
 
 // IMAP watcher
 const { startWatcher } = require("./watcher");
@@ -51,7 +52,7 @@ app.set("io", io);
 // === Middleware ===
 app.use(
   cors({
-    origin: ["https://admin.innand.com", "https://apis.innand.com", "http://localhost:8080", "http://localhost:8081", "https://innand.com"],
+    origin: ["http://admin.innand.com", "http://apis.innand.com", "http://localhost:8080", "http://localhost:8081", "http://innand.com"],
     credentials: true, // if you need cookies/auth
   })
 );
@@ -80,7 +81,7 @@ app.use("/api/employee-salary", requireAuth, employeeSalaryRouter);  // <--- THI
 app.use("/api/departments", requireAuth, departmentsRouter);
 app.use("/api/designations", requireAuth, designationsRouter);
 app.use("/api/salary-settings", requireAuth, salarySettingsRoutes);
-app.use("/api/send-slip-email", require("./routes/sendSlipEmail"));
+app.use("/api/send-slip-email", requireAuth, sendSlipEmail);
 app.use("/api/onboarding", onboardingRouter);
 app.use("/api/loans", loansRoutes);
 app.post(
