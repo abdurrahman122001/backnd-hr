@@ -14,8 +14,8 @@ const EmployeeSchema = new Schema(
     maritalStatus: { type: String, enum: ["Single", "Married"] },
     religion: { type: String },
     cnic: { type: String, trim: true, default: "" }, // CNIC Number
-    cnicIssueDate: { type: Date },
-    cnicExpiryDate: { type: Date },
+    cnicIssueDate: { type: String },
+    cnicExpiryDate: { type: String },
     photographUrl: { type: String },      // Upload Photograph
     cvUrl: { type: String },              // Upload CV
     latestQualification: { type: String },

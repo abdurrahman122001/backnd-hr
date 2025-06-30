@@ -55,11 +55,11 @@ const prompts = {
 {
   "cnic": "#####-#######-#",
   "fatherOrHusbandName": "Father or Husband Name",
-  "dateOfBirth": "YYYY-MM-DD",
+  "dateOfBirth": "DD-MM-YYYY",
   "gender": "Other",
   "nationality": "Pakistan",
-  "dateOfIssue": "YYYY-MM-DD",
-  "dateOfExpiry": "YYYY-MM-DD"
+  "dateOfIssue": "DD-MM-YYYY",
+  "dateOfExpiry": "DD-MM-YYYY"
 }`,
 };
 
