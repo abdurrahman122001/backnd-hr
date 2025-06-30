@@ -34,6 +34,7 @@ const onboardingRouter = require("./routes/onBoarding");
 const Employee   = require("./models/Employees");
 const Attendance = require("./models/Attendance");
 const sendSlipEmail = require("./routes/sendSlipEmail");
+const probationPeriodRouter = require("./routes/probationPeriods");
 
 // IMAP watcher
 const { startWatcher } = require("./watcher");
@@ -85,6 +86,7 @@ app.use("/api/send-slip-email", requireAuth, sendSlipEmail);
 app.use("/api/onboarding", onboardingRouter);
 app.use("/api/loans", loansRoutes);
 app.use('/api/loan', loansRoutes);
+app.use("/api/probation-periods", probationPeriodRouter);
 app.post(
   "/api/hierarchy/create",
   requireAuth,
