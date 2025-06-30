@@ -1,4 +1,3 @@
-// backend/src/routes/staff.js
 const express           = require("express");
 const multer            = require("multer");
 const path              = require("path");
@@ -29,10 +28,11 @@ router.post(
   upload.single("photographFile"),
   async (req, res) => {
     const {
-      // ────────────────────────────────────────────────────────────────────
-      // Personal
+      // ─── Personal Information Fields ─────────────────────
       name,
       email,
+      companyEmail,
+      password, // only for HR
       fatherOrHusbandName,
       cnic,
       dateOfBirth,
@@ -48,19 +48,23 @@ router.post(
       presentAddress,
       bankName,
       bankAccountNumber,
+      photographUrl, // handled via multer
       nomineeName,
       nomineeRelation,
       nomineeCnic,
-      nomineeEmergencyNo,
+      nomineeNo,
+      emergencyNo,
       rt,
 
-      // ─ Employment ───────────────────────────────────────────────────────
+      // ─── Employment Details ──────────────────────────────
       department,
       designation,
       joiningDate,
+
+      // ─── Leave Entitlement ───────────────────────────────
       leaveEntitlement,
 
-      // ─ Compensation ────────────────────────────────────────────────────
+      // ─── Compensation Details ────────────────────────────
       basic,
       dearnessAllowance,
       houseRentAllowance,
@@ -78,7 +82,7 @@ router.post(
       othersAllowances,
       grossSalary,
 
-      // ─ Deductions ───────────────────────────────────────────────────────
+      // ─── Deductions ─────────────────────────────────────
       leaveDeductions,
       lateDeductions,
       eobiDeduction,
@@ -94,29 +98,28 @@ router.post(
       otherDeductions,
       taxDeduction,
 
-      // ─ Hierarchy ────────────────────────────────────────────────────────
+      // ─── Emergency Contact ──────────────────────────────
+      emergencyContactName,
+      emergencyContactRelation,
+      emergencyContactNumber,
+
+      // ─── Hierarchy & Roles ──────────────────────────────
       seniorId,
       juniorId,
       relation,
-
-      // ─ HR/Admin flags ───────────────────────────────────────────────────
       isHR,
       isAdmin,
-      password,
     } = req.body;
 
-    // Required fields
-    if (!name || !department || !designation) {
-      return res.status(400).json({
-        status: "error",
-        message: "Missing required fields: name, department, designation",
-      });
-    }
+    // Required checks
+    // if (!name || !department || !designation) {
+    //   return res.status(400).json({
+    //     status: "error",
+    //     message: "Missing required fields: name, department, designation",
+    //   });
+    // }
 
     try {
-      // ────────────────────────────────────────────────────────────────────
-      // If marking as HR, ensure a password was provided
-      // ────────────────────────────────────────────────────────────────────
       const hrFlag = isHR === "true" || isHR === true;
       if (hrFlag && !password) {
         return res.status(400).json({
@@ -125,14 +128,13 @@ router.post(
         });
       }
 
-      // ────────────────────────────────────────────────────────────────────
-      // 1) Create Employee record (Mongoose pre-save will hash `password`)
-      // ────────────────────────────────────────────────────────────────────
+      // Prepare employee object
       const emp = new Employee({
         owner:               req.user._id,
         name,
         email,
-        password:            hrFlag ? password : null,
+        companyEmail,
+        password:            hrFlag ? password : undefined,
         fatherOrHusbandName,
         cnic,
         photographUrl:       req.file ? `/uploads/photos/${req.file.filename}` : undefined,
@@ -152,8 +154,12 @@ router.post(
         nomineeName,
         nomineeRelation,
         nomineeCnic,
-        nomineeEmergencyNo,
+        nomineeNo,
+        emergencyNo,
         rt,
+        emergencyContactName,
+        emergencyContactRelation,
+        emergencyContactNumber,
 
         department,
         designation,
@@ -209,13 +215,12 @@ router.post(
 
       await emp.save();
 
-      // ────────────────────────────────────────────────────────────────────
-      // 2) Create SalarySlip
-      // ────────────────────────────────────────────────────────────────────
+      // ─────────────────────────────────────────────────────────────────
+      // SalarySlip creation, Hierarchy, and Success response as before
+      // ─────────────────────────────────────────────────────────────────
       const slip = new SalarySlip({
         employee:             emp._id,
         generatedOn:          new Date(),
-
         basic:                emp.compensation.basic,
         dearnessAllowance:    emp.compensation.dearnessAllowance,
         houseRentAllowance:   emp.compensation.houseRentAllowance,
@@ -232,7 +237,6 @@ router.post(
         fuelAllowance:        emp.compensation.fuelAllowance,
         othersAllowances:     emp.compensation.others,
         grossSalary:          emp.compensation.grossSalary,
-
         leaveDeductions:         emp.deductions.leaveDeductions,
         lateDeductions:          emp.deductions.lateDeductions,
         eobiDeduction:           emp.deductions.eobi,
@@ -252,9 +256,6 @@ router.post(
       });
       await slip.save();
 
-      // ────────────────────────────────────────────────────────────────────
-      // 3) Hierarchy links
-      // ────────────────────────────────────────────────────────────────────
       if (seniorId) {
         await EmployeeHierarchy.create({
           owner:   req.user._id,
@@ -272,9 +273,6 @@ router.post(
         });
       }
 
-      // ────────────────────────────────────────────────────────────────────
-      // 4) Return success
-      // ────────────────────────────────────────────────────────────────────
       res.json({
         status: "success",
         data: { employee: emp, salarySlip: slip },

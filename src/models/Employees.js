@@ -1,26 +1,25 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
-const SALT_ROUNDS = 10;
-
 const { Schema, model } = mongoose;
 
 const EmployeeSchema = new Schema(
   {
     owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
 
-    name: { type: String, required: true },
-
-    // CNIC is required and must be a non‐empty string
-    cnic: {
-      type: String,
-      required: false,
-      trim: true,
-      default: "",
-    },
-    ndaGenerated: { type: Boolean, default: false },
-    ndaPath: { type: String }, // <---- Add this
-    contractPath: { type: String }, // <---- Add this
-    // Email is required and must be a non‐empty string
+    // PERSONAL DETAILS
+    name: { type: String, required: true }, // Full Name
+    fatherOrHusbandName: { type: String },
+    dateOfBirth: { type: String }, // Could be Date, but matching your frontend
+    gender: { type: String },
+    nationality: { type: String },
+    maritalStatus: { type: String, enum: ["Single", "Married"] },
+    religion: { type: String },
+    cnic: { type: String, trim: true, default: "" }, // CNIC Number
+    cnicIssueDate: { type: Date },
+    cnicExpiryDate: { type: Date },
+    photographUrl: { type: String },      // Upload Photograph
+    cvUrl: { type: String },              // Upload CV
+    latestQualification: { type: String },
+    phone: { type: String },              // Mobile Number
     email: {
       type: String,
       required: [true, "Email is required"],
@@ -29,45 +28,45 @@ const EmployeeSchema = new Schema(
         validator: (v) => typeof v === "string" && v.trim() !== "",
         message: "Email cannot be empty",
       },
-    },
-    companyEmail: {type: String , default: ""},
-    fatherOrHusbandName: { type: String },
-    photographUrl: { type: String },
-    dateOfBirth: { type: String },
-    gender: { type: String },
-    nationality: { type: String },
-    cnicIssueDate: { type: Date },
-    cnicExpiryDate: { type: Date },
-    maritalStatus: { type: String, enum: ["Single", "Married"] },
-    religion: { type: String },
-    latestQualification: { type: String },
-    phone: { type: String },
+    },                                   // Personal Email Address
+    companyEmail: { type: String, default: "" }, // Office Email Address
     permanentAddress: { type: String },
     presentAddress: { type: String },
 
+    // BANK DETAILS
     bankName: { type: String },
     bankAccountNumber: { type: String },
 
+    // NOMINEE DETAILS
     nomineeName: { type: String },
-    nomineeRelation: { type: String },
     nomineeCnic: { type: String },
-    nomineeEmergencyNo: { type: String },
-    rt: { type: String, default: "15:15" },
+    nomineeRelation: { type: String },      // Relationship with Nominee
+    nomineeNo: { type: String },            // Nominee Number
 
-    // Employment Details
+    // EMERGENCY CONTACT DETAILS
+    emergencyContactName: { type: String },
+    emergencyContactRelation: { type: String },
+    emergencyContactNumber: { type: String },
+
+    // (OPTIONAL) If you want to keep emergencyNo separately
+    emergencyNo: { type: String }, // If used
+
+    rt: { type: String, default: "15:15" }, // Reporting Time
+
+    // EMPLOYMENT DETAILS
     department: { type: String },
     designation: { type: String },
     joiningDate: { type: String },
-    shifts: [{ type: Schema.Types.ObjectId, ref: "Shift" }], // <--- ADD THIS LINE
+    shifts: [{ type: Schema.Types.ObjectId, ref: "Shift" }],
 
-    // Leave Entitlement
+    // LEAVE ENTITLEMENT
     leaveEntitlement: {
       total: { type: Number, default: 22 },
       usedPaid: { type: Number, default: 0 },
       usedUnpaid: { type: Number, default: 0 },
     },
 
-    // Compensation Details
+    // COMPENSATION DETAILS
     compensation: {
       basic: { type: Number, default: 0 },
       dearnessAllowance: { type: Number, default: 0 },
@@ -87,7 +86,7 @@ const EmployeeSchema = new Schema(
       grossSalary: { type: Number, default: 0 },
     },
 
-    // Deductions
+    // DEDUCTIONS
     deductions: {
       leaveDeductions: { type: Number, default: 0 },
       lateDeductions: { type: Number, default: 0 },
@@ -106,25 +105,25 @@ const EmployeeSchema = new Schema(
       others: { type: Number, default: 0 },
       tax: { type: Number, default: 0 },
     },
-    // Reference to a User document (kept for future use if needed)
+
+    // User link (for future use)
     userAccount: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: false,
     },
+
+    // NDA/Contract
+    ndaGenerated: { type: Boolean, default: false },
+    ndaPath: { type: String },
+    contractPath: { type: String },
   },
   {
     timestamps: true,
   }
 );
 
-EmployeeSchema.index(
-  { email: 1 },
-  {
-    unique: true,
-    sparse: true,
-  }
-);
+// Index for unique emails
 EmployeeSchema.index(
   { email: 1 },
   {

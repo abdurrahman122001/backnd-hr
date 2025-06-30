@@ -84,6 +84,7 @@ app.use("/api/salary-settings", requireAuth, salarySettingsRoutes);
 app.use("/api/send-slip-email", requireAuth, sendSlipEmail);
 app.use("/api/onboarding", onboardingRouter);
 app.use("/api/loans", loansRoutes);
+app.use('/api/loan', loansRoutes);
 app.post(
   "/api/hierarchy/create",
   requireAuth,

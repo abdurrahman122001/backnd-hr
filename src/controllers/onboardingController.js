@@ -45,8 +45,7 @@ module.exports = {
         !position ||
         !department ||
         !startDate ||
-        !reportingTime ||
-        !confirmationDeadlineDate
+        !reportingTime 
       ) {
         return res.status(400).json({ error: "Missing required fields." });
       }
@@ -67,7 +66,6 @@ module.exports = {
           department: department, // department name (not id)
           joiningDate: startDate,
           reportingTime,
-          confirmationDeadlineDate,
           salaryBreakup,
           shifts,
         },
@@ -83,7 +81,6 @@ module.exports = {
         department,
         startDate,
         reportingTime,
-        confirmationDeadlineDate,
         grossSalary,
         shifts,
         salaryBreakup: {},

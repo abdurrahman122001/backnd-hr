@@ -1,4 +1,5 @@
 // sendSlipEmail.js
+const CompanyProfile = require('../models/CompanyProfile');
 const nodemailer = require("nodemailer");
 const numberToWords = require("number-to-words");
 
@@ -41,9 +42,7 @@ function formatPhoneNumber(phone) {
   return `+${num}`;
 }
 
-
-
-    // Field Label Maps
+  // Field Label Maps
 const ALLOWANCES_LABELS = {
   basic: "Basic Pay",
   dearnessAllowance: "Dearness Allowance",
@@ -105,31 +104,42 @@ const PROFILE_LABELS = {
   nomineeRelation: "Relation with Nominee",
   nomineeEmergencyNo: "Nominee Number",
 };
-const LEAVE_TYPES = [
-  { label: "Casual", key: "casual" },
-  { label: "Sick", key: "sick" },
-  { label: "Annual", key: "annual" },
-  { label: "WOP", key: "wop" },
-  { label: "Other", key: "other" },
+
+
+const LOAN_TYPES = [
+  { key: "pfLoan", label: "PF Loan" },
+  { key: "vehicleLoan", label: "Vehicle Loan" },
+  { key: "otherLoan", label: "Other Loan" }
 ];
 
+const LOAN_COLUMNS = [
+  { key: "amount", label: "Amount" },
+  { key: "paid", label: "Paid" },
+  { key: "balancePrincipal", label: "Principal Balance" },
+  { key: "balanceMarkup", label: "Markup Balance" },
+  { key: "totalBalance", label: "Net Balance" }
+];
 
-
+// Backend: use this for Provident Fund
 const PROVIDENT_FUND_FIELDS = [
-  { label: "Provident Fund Balance Brought Forward", key: "providentFundBalanceBF" },
-  { label: "Provident Fund Contribution", key: "providentFundContribution" },
-  { label: "Provident Fund Withdrawal", key: "providentFundWithdrawal" },
-  { label: "Provident Fund Profit", key: "providentFundProfit" },
-  { label: "Provident Fund Balance", key: "providentFundBalance" },
+  { label: "Balance Brought Forward", key: "providentFundBalanceBF" },
+  { label: "Employee Contribution", key: "employeeProvidentFundContribution" },
+  { label: "Employer Contribution", key: "employerProvidentFundContribution" },
+  { label: "Withdrawal", key: "providentFundWithdrawal" },
+  { label: "Profit", key: "providentFundProfit" },
+  { label: "Balance", key: "providentFundBalance" }
 ];
 
+// Backend: use this for Gratuity Fund
 const GRATUITY_FUND_FIELDS = [
-  { label: "Gratuity Fund Balance Brought Forward", key: "gratuityFundBalanceBF" },
-  { label: "Gratuity Fund Contribution", key: "gratuityFundContribution" },
-  { label: "Gratuity Fund Withdrawal", key: "gratuityFundWithdrawal" },
-  { label: "Gratuity Fund Profit", key: "gratuityFundProfit" },
-  { label: "Gratuity Fund Balance", key: "gratuityFundBalance" },
+  { label: "Balance Brought Forward", key: "gratuityFundBalanceBF" },
+  { label: "Employee Contribution", key: "employeeGratuityFundContribution" },
+  { label: "Employer Contribution", key: "employerGratuityFundContribution" },
+  { label: "Withdrawal", key: "gratuityFundWithdrawal" },
+  { label: "Profit", key: "gratuityFundProfit" },
+  { label: "Balance", key: "gratuityFundBalance" }
 ];
+
 
 
 function padRows(htmlRows, count) {
@@ -146,51 +156,9 @@ function padRows(htmlRows, count) {
 }
 
 function renderLoanTable(loans = {}) {
-  // Find loan fields present
-  const LOAN_FIELDS = [
-    { label: "PF Loan Amount", key: "pfLoanAmount" },
-    { label: "PF Loan Paid", key: "pfLoanPaid" },
-    { label: "PF Loan Balance Principal", key: "pfLoanBalancePrincipal" },
-    { label: "PF Loan Balance Markup", key: "pfLoanBalanceMarkup" },
-    { label: "PF Loan Net Balance", key: "pfLoanTotalBalance" },
-    { label: "Vehicle Loan Amount", key: "vehicleLoanAmount" },
-    { label: "Vehicle Loan Paid", key: "vehicleLoanPaid" },
-    { label: "Vehicle Loan Balance Principal", key: "vehicleLoanBalancePrincipal" },
-    { label: "Vehicle Loan Balance Markup", key: "vehicleLoanBalanceMarkup" },
-    { label: "Vehicle Loan Net Balance", key: "vehicleLoanTotalBalance" },
-    { label: "Other Loan Amount", key: "otherLoanAmount" },
-    { label: "Other Loan Paid", key: "otherLoanPaid" },
-    { label: "Other Loan Balance Principal", key: "otherLoanBalancePrincipal" },
-    { label: "Other Loan Balance Markup", key: "otherLoanBalanceMarkup" },
-    { label: "Other Loan Net Balance", key: "otherLoanTotalBalance" }
-  ];
-  // Only keep columns where value exists in loans
-  const visibleFields = LOAN_FIELDS.filter(f => loans.hasOwnProperty(f.key));
-  if (visibleFields.length === 0) return "";
-
-  // Group by loan type for rows
-  const types = [
-    { name: "PF Loan", keys: ["pfLoanAmount", "pfLoanPaid", "pfLoanBalancePrincipal", "pfLoanBalanceMarkup", "pfLoanTotalBalance"] },
-    { name: "Vehicle Loan", keys: ["vehicleLoanAmount", "vehicleLoanPaid", "vehicleLoanBalancePrincipal", "vehicleLoanBalanceMarkup", "vehicleLoanTotalBalance"] },
-    { name: "Other Loan", keys: ["otherLoanAmount", "otherLoanPaid", "otherLoanBalancePrincipal", "otherLoanBalanceMarkup", "otherLoanTotalBalance"] }
-  ];
-
-  // Filter out types that have no visible keys
-  const visibleTypes = types.filter(type =>
-    type.keys.some(k => loans.hasOwnProperty(k))
-  );
+  // Only show rows for loan types present in data
+  const visibleTypes = LOAN_TYPES.filter(type => loans[type.key] && Object.keys(loans[type.key]).length > 0);
   if (visibleTypes.length === 0) return "";
-
-  // Find which columns to show (dynamic, for just the checked fields)
-  const usedColumns = Array.from(
-    new Set(
-      visibleTypes.flatMap(type => type.keys.filter(k => loans.hasOwnProperty(k)))
-    )
-  );
-
-  // Map col key to label
-  const colLabel = {};
-  LOAN_FIELDS.forEach(f => (colLabel[f.key] = f.label));
 
   return `
     <div style="margin-bottom: 24px;">
@@ -201,14 +169,23 @@ function renderLoanTable(loans = {}) {
         <thead>
           <tr style="background:#f1f5f9;">
             <th style="padding:10px 6px; border:1px solid #e5e7eb;">Type</th>
-            ${usedColumns.map(k => `<th style="padding:10px 6px; border:1px solid #e5e7eb;">${colLabel[k]}</th>`).join("")}
+            ${LOAN_COLUMNS.map(col =>
+              `<th style="padding:10px 6px; border:1px solid #e5e7eb;">${col.label}</th>`
+            ).join("")}
           </tr>
         </thead>
         <tbody>
           ${visibleTypes.map(type => `
             <tr>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${type.name}</td>
-              ${usedColumns.map(k => type.keys.includes(k) ? `<td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${loans[k] ?? "-"}</td>` : `<td></td>`).join("")}
+              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${type.label}</td>
+              ${LOAN_COLUMNS.map(col => `
+                <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">
+                  ${loans[type.key]?.[col.key] !== undefined && loans[type.key]?.[col.key] !== null
+                    ? loans[type.key][col.key]
+                    : "-"
+                  }
+                </td>
+              `).join("")}
             </tr>
           `).join("")}
         </tbody>
@@ -216,6 +193,7 @@ function renderLoanTable(loans = {}) {
     </div>
   `;
 }
+
 
 
 function renderLeaveTable(leaves = {}) {
@@ -278,15 +256,7 @@ function renderLeaveTable(leaves = {}) {
 }
 
 function renderProvidentFundTable(data = {}) {
-  const fields = [
-    { label: "Provident Fund Balance Brought Forward", key: "providentFundBalanceBF" },
-    { label: "Employee Provident Fund Contribution", key: "employeeProvidentFundContribution" },
-    { label: "Employer Provident Fund Contribution", key: "employerProvidentFundContribution" },
-    { label: "Provident Fund Withdrawal", key: "providentFundWithdrawal" },
-    { label: "Provident Fund Profit", key: "providentFundProfit" },
-    { label: "Provident Fund Balance", key: "providentFundBalance" },
-  ];
-  const visibleFields = fields.filter(f => data.hasOwnProperty(f.key));
+  const visibleFields = PROVIDENT_FUND_FIELDS.filter(f => data.hasOwnProperty(f.key));
   if (visibleFields.length === 0) return "";
   return `
     <div style="margin-bottom: 24px;">
@@ -311,17 +281,8 @@ function renderProvidentFundTable(data = {}) {
   `;
 }
 
-
 function renderGratuityFundTable(data = {}) {
-  const fields = [
-    { label: "Gratuity Fund Balance Brought Forward", key: "gratuityFundBalanceBF" },
-    { label: "Employee Gratuity Fund Contribution", key: "employeeGratuityFundContribution" },
-    { label: "Employer Gratuity Fund Contribution", key: "employerGratuityFundContribution" },
-    { label: "Gratuity Fund Withdrawal", key: "gratuityFundWithdrawal" },
-    { label: "Gratuity Fund Profit", key: "gratuityFundProfit" },
-    { label: "Gratuity Fund Balance", key: "gratuityFundBalance" },
-  ];
-  const visibleFields = fields.filter(f => data.hasOwnProperty(f.key));
+  const visibleFields = GRATUITY_FUND_FIELDS.filter(f => data.hasOwnProperty(f.key));
   if (visibleFields.length === 0) return "";
   return `
     <div style="margin-bottom: 24px;">
@@ -359,6 +320,7 @@ function buildSalarySlipHtml({
   labels,
   netSalary,
   monthYear,
+  company,
 }) {
   // Amount in words
   const amountInWords = netSalary > 0
@@ -471,7 +433,7 @@ function buildSalarySlipHtml({
   <html lang="en">
   <head>
     <meta charset="UTF-8">
-    <title>Pay Slip - MAVENS ADVISOR Pvt Ltd.</title>
+    <title>Pay Slip - ${company.name}</title>
     <meta name="viewport" content="width=900", initial-scale=1.0">
   </head>
   <body style="min-height:100vh; background-color:#eff6ff; margin:0; padding:16px; font-family:'Segoe UI',Arial,sans-serif; box-sizing: border-box;">
@@ -482,9 +444,9 @@ function buildSalarySlipHtml({
           <tr>
             <td style="word-break:break-word; overflow-wrap:break-word; vertical-align:top;">
               <h1 style="font-size:25px; font-weight:700; color:#1d4ed8; margin:0; letter-spacing:0.5px; line-height:1.1;">
-                MAVENS ADVISOR PVT LTD.
+                ${company.name}
               </h1>
-              <p style="color:#334155; font-weight:600; margin:8px 0 0 0;">GULSHAN-E-MAYMAR, KARACHI</p>
+              <p style="color:#334155; font-weight:600; margin:8px 0 0 0;">${company.address}</p>
             </td>
             <td align="right" style="vertical-align:top;">
               <div style="display:inline-block; text-align:right;">
@@ -590,6 +552,13 @@ function buildSalarySlipHtml({
 
 module.exports = async function sendSlipEmail(req, res) {
   try {
+    const companyProfile = await CompanyProfile.findOne({ owner: req.user._id }).lean();
+
+    const company = {
+      name: companyProfile?.name || 'Company Name',
+      address: companyProfile?.address || '',
+      email: companyProfile?.email || '',
+    };
     const {
       employee,
       compensation,
@@ -633,6 +602,7 @@ module.exports = async function sendSlipEmail(req, res) {
       labels,
       netSalary,
       monthYear,
+      company,
     });
 
     const transporter = nodemailer.createTransport({

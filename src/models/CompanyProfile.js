@@ -10,7 +10,9 @@ const CompanyProfileSchema = new Schema({
   name:    { type: String, required: true },
   branches: [BranchSchema], // <-- Array of branches!
   email:   { type: String, required: true },
-  website: { type: String, default: "" }
+  website: { type: String, default: "" },
+  logo:    { type: String, default: "" }   
 }, { timestamps: true });
+
 
 module.exports = model('CompanyProfile', CompanyProfileSchema);
