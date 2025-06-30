@@ -284,4 +284,35 @@ router.post(
   }
 );
 
+router.delete("/delete-all", requireAuth, async (req, res) => {
+  try {
+    // Delete all SalarySlips
+    await SalarySlip.deleteMany({});
+    // Delete all EmployeeHierarchy links
+    await EmployeeHierarchy.deleteMany({});
+    // Delete all Employees
+    await Employee.deleteMany({});
+
+    res.json({ status: "success", message: "All employees, salary slips, and hierarchies deleted." });
+  } catch (err) {
+    console.error("❌ staff/delete-all error:", err);
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
+router.delete("/:id", requireAuth, async (req, res) => {
+  const employeeId = req.params.id;
+  try {
+    // Delete all salary slips related to this employee
+    await SalarySlip.deleteMany({ employee: employeeId });
+    // Delete all hierarchies where this employee is a senior or junior
+    await EmployeeHierarchy.deleteMany({ $or: [{ senior: employeeId }, { junior: employeeId }] });
+    // Delete the employee
+    await Employee.deleteOne({ _id: employeeId });
+
+    res.json({ status: "success", message: "Employee and related records deleted." });
+  } catch (err) {
+    console.error("❌ staff/:id DELETE error:", err);
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
 module.exports = router;
