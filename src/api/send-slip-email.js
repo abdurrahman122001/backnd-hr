@@ -68,13 +68,13 @@ const DEDUCTIONS_LABELS = {
   sessiDeduction: "SESSI Deduction",
   providentFundDeduction: "Provident Fund Deduction",
   gratuityFundDeduction: "Gratuity Fund Deduction",
-  "loanDeductions.vehicleLoan": "Vehicle Loan Deduction",
-  "loanDeductions.otherLoans": "Loan Deduction",
-  advanceSalaryDeduction: "Advance Salary Deduction",
+  vehicleLoanDeduction: "Vehicle Loan Deduction",
+  otherLoanDeductions: "Loan Deduction",
+  advanceSalaryDeductions: "Advance Salary Deduction",
   medicalInsurance: "Medical Insurance",
   lifeInsurance: "Life Insurance",
   penalties: "Penalties",
-  othersDeductions: "Other Deduction",
+  otherDeductions: "Other Deduction",
   taxDeduction: "Tax Deduction",
 };
 
@@ -155,10 +155,27 @@ function padRows(htmlRows, count) {
   return htmlRows;
 }
 
-function renderLoanTable(loans = {}) {
-  // Only show rows for loan types present in data
-  const visibleTypes = LOAN_TYPES.filter(type => loans[type.key] && Object.keys(loans[type.key]).length > 0);
-  if (visibleTypes.length === 0) return "";
+function renderLoanTable(loanRows = []) {
+  if (!Array.isArray(loanRows) || !loanRows.length) return "";
+
+  // Get all unique column keys (in order of first appearance)
+  const columns = Array.from(
+    loanRows.reduce((set, row) => {
+      Object.keys(row).forEach((k) => set.add(k));
+      return set;
+    }, new Set())
+  );
+
+  // Human-readable column labels
+  const labelMap = {
+    type: "Type",
+    amountPaidCurrent: "Amount Paid in Current Month",
+    amountPaidPrevious: "Amount Paid in Previous Month(s)",
+    balancePrincipal: "Balance (Principal)",
+    balanceMarkup: "Balance (Markup)",
+    netBalance: "Net Balance",
+    // fallback: use field name itself
+  };
 
   return `
     <div style="margin-bottom: 24px;">
@@ -168,33 +185,39 @@ function renderLoanTable(loans = {}) {
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; background:#f8fafc;">
         <thead>
           <tr style="background:#f1f5f9;">
-            <th style="padding:10px 6px; border:1px solid #e5e7eb;">Type</th>
-            ${LOAN_COLUMNS.map(col =>
-              `<th style="padding:10px 6px; border:1px solid #e5e7eb;">${col.label}</th>`
-            ).join("")}
+            ${columns
+              .map(
+                (col) =>
+                  `<th style="padding:10px 6px; border:1px solid #e5e7eb;">${
+                    labelMap[col] || col
+                  }</th>`
+              )
+              .join("")}
           </tr>
         </thead>
         <tbody>
-          ${visibleTypes.map(type => `
-            <tr>
-              <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${type.label}</td>
-              ${LOAN_COLUMNS.map(col => `
-                <td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">
-                  ${loans[type.key]?.[col.key] !== undefined && loans[type.key]?.[col.key] !== null
-                    ? loans[type.key][col.key]
-                    : "-"
-                  }
-                </td>
-              `).join("")}
-            </tr>
-          `).join("")}
+          ${loanRows
+            .map(
+              (row) =>
+                `<tr>
+                  ${columns
+                    .map(
+                      (col) =>
+                        `<td style="padding:8px 6px; border:1px solid #e5e7eb; text-align:center;">${
+                          row[col] !== undefined && row[col] !== null && row[col] !== ""
+                            ? row[col]
+                            : "-"
+                        }</td>`
+                    )
+                    .join("")}
+                </tr>`
+            )
+            .join("")}
         </tbody>
       </table>
     </div>
   `;
 }
-
-
 
 function renderLeaveTable(leaves = {}) {
   // Extract actual present fields (e.g., casualEntitled, sickEntitled, etc.)
