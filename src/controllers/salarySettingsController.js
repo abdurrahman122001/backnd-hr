@@ -1,4 +1,4 @@
-// // backend/src/controllers/salarySettingsController.js
+// backend/src/controllers/salarySettingsController.js
 
 const SalarySettings = require("../models/SalarySettings");
 

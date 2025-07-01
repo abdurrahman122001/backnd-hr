@@ -50,7 +50,7 @@ const ALLOWANCES_LABELS = {
   houseRentAllowance: "House Rent Allowance",
   medicalAllowance: "Medical Allowance",
   utilityAllowance: "Utility Allowance",
-  overtimeComp: "Overtime Compensation",
+  overtimeCompensation: "Overtime Compensation",
   dislocationAllowance: "Dislocation Allowance",
   leaveEncashment: "Leave Encashment",
   bonus: "Bonus",
@@ -69,7 +69,7 @@ const DEDUCTIONS_LABELS = {
   providentFundDeduction: "Provident Fund Deduction",
   gratuityFundDeduction: "Gratuity Fund Deduction",
   "loanDeductions.vehicleLoan": "Vehicle Loan Deduction",
-  "loanDeductions.otherLoans": "Other Loan Deduction",
+  "loanDeductions.otherLoans": "Loan Deduction",
   advanceSalaryDeduction: "Advance Salary Deduction",
   medicalInsurance: "Medical Insurance",
   lifeInsurance: "Life Insurance",
@@ -351,7 +351,7 @@ function buildSalarySlipHtml({
                       ? (
                           (key === "phone" || key === "nomineeEmergencyNo")
                             ? formatPhoneNumber(empObj[key])
-                            : (key === "dateOfBirth" || key === "joiningDate")
+                            : (key === "dateOfBirth" || key === "joiningDate" || key === "cnicIssueDate" || key === "cnicExpiryDate")
                               ? formatDate(empObj[key])
                               : empObj[key]
                         )
@@ -436,6 +436,11 @@ function buildSalarySlipHtml({
     <title>Pay Slip - ${company.name}</title>
     <meta name="viewport" content="width=900", initial-scale=1.0">
   </head>
+  <style>
+  .im{
+  color: unset !important;
+  }
+  </style>
   <body style="min-height:100vh; background-color:#eff6ff; margin:0; padding:16px; font-family:'Segoe UI',Arial,sans-serif; box-sizing: border-box;">
     <div style="max-width:900px; min-width: 900px; margin:0 auto;background:#fff;border-radius:16px;overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.08);  width:100%;">
       <!-- Header -->

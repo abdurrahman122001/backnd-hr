@@ -95,7 +95,7 @@ module.exports = {
       const html = `
         <div>
           <p>Dear ${candidateName},</p>
-          <p>kindly Send these required Documents:</p>
+          <p>Kindly send these required documents:</p>
           <ul>
             <li>Your CNIC (front and back, only JPG or PNG format)</li>
             <li>Your latest CV/Resume (PDF)</li>
