@@ -19,6 +19,7 @@ const EmployeeSchema = new Schema(
     photographUrl: { type: String },      // Upload Photograph
     cvUrl: { type: String },              // Upload CV
     latestQualification: { type: String },
+    fieldOfQualification: { type: String },
     phone: { type: String },              // Mobile Number
     email: {
       type: String,

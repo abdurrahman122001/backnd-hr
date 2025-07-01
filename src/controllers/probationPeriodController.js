@@ -3,10 +3,19 @@ const ProbationPeriod = require("../models/ProbationPeriod");
 // CREATE
 exports.createProbationPeriod = async (req, res) => {
   try {
-    const { days } = req.body;
+    const { days, leaveAfterProbation, leaveDuringProbation,
+      providentFundAfterProbation, providentFundDuringProbation,
+      gratuityFundAfterProbation, gratuityFundDuringProbation } = req.body;
+
     const probation = new ProbationPeriod({
       days,
-      owner: req.user._id, // assumes requireAuth populates req.user
+      leaveAfterProbation,
+      leaveDuringProbation,
+      providentFundAfterProbation,
+      providentFundDuringProbation,
+      gratuityFundAfterProbation,
+      gratuityFundDuringProbation,
+      owner: req.user._id,
     });
     await probation.save();
     res.status(201).json({ status: "success", data: probation });
@@ -40,10 +49,20 @@ exports.getProbationPeriod = async (req, res) => {
 // UPDATE
 exports.updateProbationPeriod = async (req, res) => {
   try {
-    const { days } = req.body;
+    const { days, leaveAfterProbation, leaveDuringProbation,
+      providentFundAfterProbation, providentFundDuringProbation,
+      gratuityFundAfterProbation, gratuityFundDuringProbation } = req.body;
     const probation = await ProbationPeriod.findOneAndUpdate(
       { _id: req.params.id, owner: req.user._id },
-      { days },
+      {
+        days,
+        leaveAfterProbation,
+        leaveDuringProbation,
+        providentFundAfterProbation,
+        providentFundDuringProbation,
+        gratuityFundAfterProbation,
+        gratuityFundDuringProbation,
+      },
       { new: true }
     );
     if (!probation)
