@@ -20,9 +20,8 @@ async function extractTextFromImage(fileData) {
 }
 
 async function extractCNICWithDeepSeek(ocrText) {
-  // The prompt ensures the model returns *exact* JSON (no extra explanation)
   const prompt = `
-You are a professional Pakistani CNIC parser. 
+You are a professional Pakistani CNIC parser.
 Given the following raw OCR text of a CNIC card, extract the information and return **EXACTLY** this JSON (no explanation, no extra text):
 
 {
@@ -59,16 +58,49 @@ Text:
   );
 
   const content = res.data.choices?.[0]?.message?.content || "";
+
   let info = {};
   try {
+    // Try direct parse
     info = JSON.parse(content);
   } catch {
-    // fallback: Try to extract JSON from any extra stuff
+    // Try to extract JSON object from messy output
     const jsonText = content.match(/\{[\s\S]*?\}/);
-    if (jsonText) info = JSON.parse(jsonText[0]);
-    else throw new Error("DeepSeek did not return JSON!");
+    if (jsonText) {
+      try {
+        info = JSON.parse(jsonText[0]);
+      } catch (e2) {
+        throw new Error("DeepSeek did not return valid JSON!");
+      }
+    } else {
+      throw new Error("DeepSeek did not return JSON!");
+    }
   }
   return info;
+}
+
+// Fallback: Manual Regex extractor (improve patterns as needed)
+function fallbackCNICExtractor(ocrText) {
+  // Very basic demo patterns. Improve these for your actual OCR format!
+  const name = (ocrText.match(/Name\s*[:\-]?\s*([A-Z ]+)/i) || [])[1] || "";
+  const fatherOrHusbandName = (ocrText.match(/Father(?:'s)? Name\s*[:\-]?\s*([A-Z ]+)/i) || [])[1] || "";
+  const cnic = (ocrText.match(/\b\d{5}-\d{7}-\d{1}\b/) || [])[0] || "";
+  const gender = (ocrText.match(/Gender\s*[:\-]?\s*(Male|Female)/i) || [])[1] || "";
+  const nationality = (ocrText.match(/Nationality\s*[:\-]?\s*([A-Z ]+)/i) || [])[1] || "";
+  const dateOfBirth = (ocrText.match(/Date of Birth\s*[:\-]?\s*([\d\/\-]+)/i) || [])[1] || "";
+  const dateOfIssue = (ocrText.match(/Date of Issue\s*[:\-]?\s*([\d\/\-]+)/i) || [])[1] || "";
+  const dateOfExpiry = (ocrText.match(/Date of Expiry\s*[:\-]?\s*([\d\/\-]+)/i) || [])[1] || "";
+
+  return {
+    name: name.trim(),
+    fatherOrHusbandName: fatherOrHusbandName.trim(),
+    cnic: cnic.trim(),
+    gender: gender.trim(),
+    nationality: nationality.trim(),
+    dateOfBirth: dateOfBirth.trim(),
+    dateOfIssue: dateOfIssue.trim(),
+    dateOfExpiry: dateOfExpiry.trim(),
+  };
 }
 
 async function extractCNICUsingOCR(fileData) {
@@ -92,8 +124,9 @@ async function extractCNICUsingOCR(fileData) {
     };
   } catch (err) {
     console.error("DeepSeek extraction failed, falling back to manual regex:", err);
-    // Fallback: use your regex/extraction code (you can import your regex fallback here)
-    return {}; // or call your fallback function
+    // Fallback: use regex-based extraction
+    const fallbackInfo = fallbackCNICExtractor(ocrText);
+    return fallbackInfo;
   }
 }
 

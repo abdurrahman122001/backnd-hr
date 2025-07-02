@@ -105,6 +105,8 @@ module.exports = {
         </div>
       `;
 
+      
+
       await sendEmail({
         to: candidateEmail,
         subject: "Next Step: Please Send Your CNIC & CV",
