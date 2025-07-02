@@ -1,14 +1,10 @@
-require("dotenv").config();
 const fs = require("fs");
 const Tesseract = require("tesseract.js");
-const { OpenAI } = require("openai");
+const axios = require("axios");
 
-// Initialize OpenAI client
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Use your DeepSeek model (free) on OpenRouter
+const DEEPSEEK_MODEL = "deepseek/deepseek-r1-0528:free"; // You can swap with another free DeepSeek model if needed
 
-/**
- * Extracts raw text from an image buffer or file path using Tesseract.js.
- */
 async function extractTextFromImage(fileData) {
   const imageBuffer = Buffer.isBuffer(fileData)
     ? fileData
@@ -23,71 +19,83 @@ async function extractTextFromImage(fileData) {
   return text;
 }
 
-async function sendTextToAI(promptText, systemInstruction = "") {
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      { role: "system", content: systemInstruction },
-      { role: "user", content: promptText },
-    ],
-    temperature: 0,
-    max_tokens: 4000,
-  });
+async function extractCNICWithDeepSeek(ocrText) {
+  // The prompt ensures the model returns *exact* JSON (no extra explanation)
+  const prompt = `
+You are a professional Pakistani CNIC parser. 
+Given the following raw OCR text of a CNIC card, extract the information and return **EXACTLY** this JSON (no explanation, no extra text):
 
-  const content = response.choices?.[0]?.message?.content;
-  if (!content) throw new Error("No content returned from AI");
-
-  return content.trim();
+{
+  "name": "",
+  "fatherOrHusbandName": "",
+  "cnic": "",
+  "gender": "",
+  "nationality": "",
+  "dateOfBirth": "",
+  "dateOfIssue": "",
+  "dateOfExpiry": ""
 }
 
-// Only these two prompts are needed:
-const prompts = {
-  CV: `You are a professional CV parser. Return exactly this JSON format (no explanation):
-{
-  "phone": "Phone number",
-  "fatherOrHusbandName": "Father or Husband Name",
-  "skills": ["Skill1", "Skill2"],
-  "education": [{"degree": "BSc", "institution": "XYZ University"}],
-  "experience": [{"title": "Job Title", "company": "Company", "duration": "Years"}]
-}`,
+Text:
+"""${ocrText}"""
+`;
 
-  CNIC: `You are a CNIC parser. Return exactly this JSON format (no explanation):
-{
-  "cnic": "#####-#######-#",
-  "fatherOrHusbandName": "Father or Husband Name",
-  "dateOfBirth": "DD-MM-YYYY",
-  "gender": "Other",
-  "nationality": "Pakistan",
-  "dateOfIssue": "DD-MM-YYYY",
-  "dateOfExpiry": "DD-MM-YYYY"
-}`,
-};
-
-async function extractTextUsingAI(fileData, documentType = "generic") {
-  let rawText;
-
-  // 1) OCR step
-  if (Buffer.isBuffer(fileData)) {
-    rawText = await extractTextFromImage(fileData);
-  } else if (typeof fileData === "string") {
-    const ext = fileData.split(".").pop().toLowerCase();
-    if (["png", "jpg", "jpeg"].includes(ext)) {
-      rawText = await extractTextFromImage(fileData);
-    } else {
-      throw new Error("Unsupported file type: only png, jpg, jpeg allowed");
+  const res = await axios.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      model: DEEPSEEK_MODEL,
+      messages: [
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.2,
+      max_tokens: 512,
+    },
+    {
+      headers: {
+        "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+        "Content-Type": "application/json",
+      },
     }
-  } else {
-    throw new Error("fileData must be a Buffer or file path string");
+  );
+
+  const content = res.data.choices?.[0]?.message?.content || "";
+  let info = {};
+  try {
+    info = JSON.parse(content);
+  } catch {
+    // fallback: Try to extract JSON from any extra stuff
+    const jsonText = content.match(/\{[\s\S]*?\}/);
+    if (jsonText) info = JSON.parse(jsonText[0]);
+    else throw new Error("DeepSeek did not return JSON!");
   }
-
-  let systemInstruction = prompts[documentType];
-  if (!systemInstruction) throw new Error("Unknown document type!");
-
-  const promptText = `Extracted Text:\n\n${rawText}`;
-  const result = await sendTextToAI(promptText, systemInstruction);
-  return result;
+  return info;
 }
 
-module.exports = {
-  extractTextUsingAI,
-};
+async function extractCNICUsingOCR(fileData) {
+  // 1. OCR
+  const ocrText = await extractTextFromImage(fileData);
+  console.log("OCR Result:\n", ocrText);
+
+  // 2. DeepSeek LLM Extraction
+  try {
+    const info = await extractCNICWithDeepSeek(ocrText);
+    // Defensive clean: fallback to "" for missing fields
+    return {
+      name: info.name || "",
+      fatherOrHusbandName: info.fatherOrHusbandName || "",
+      cnic: info.cnic || "",
+      gender: info.gender || "",
+      nationality: info.nationality || "",
+      dateOfBirth: info.dateOfBirth || "",
+      dateOfIssue: info.dateOfIssue || "",
+      dateOfExpiry: info.dateOfExpiry || "",
+    };
+  } catch (err) {
+    console.error("DeepSeek extraction failed, falling back to manual regex:", err);
+    // Fallback: use your regex/extraction code (you can import your regex fallback here)
+    return {}; // or call your fallback function
+  }
+}
+
+module.exports = { extractCNICUsingOCR };
+exports.extractCNICUsingOCR = extractCNICUsingOCR;

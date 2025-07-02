@@ -90,6 +90,7 @@ const PROFILE_LABELS = {
   cnicIssueDate: "CNIC Issue Date",
   cnicExpiryDate: "CNIC Expiry Date",
   latestQualification: "Latest Qualification",
+  fieldOfQualification: "Field of Qualification",
   phone: "Phone",
   email: "Email",
   permanentAddress: "Permanent Address",
@@ -105,20 +106,6 @@ const PROFILE_LABELS = {
   nomineeEmergencyNo: "Nominee Number",
 };
 
-
-const LOAN_TYPES = [
-  { key: "pfLoan", label: "PF Loan" },
-  { key: "vehicleLoan", label: "Vehicle Loan" },
-  { key: "otherLoan", label: "Other Loan" }
-];
-
-const LOAN_COLUMNS = [
-  { key: "amount", label: "Amount" },
-  { key: "paid", label: "Paid" },
-  { key: "balancePrincipal", label: "Principal Balance" },
-  { key: "balanceMarkup", label: "Markup Balance" },
-  { key: "totalBalance", label: "Net Balance" }
-];
 
 // Backend: use this for Provident Fund
 const PROVIDENT_FUND_FIELDS = [

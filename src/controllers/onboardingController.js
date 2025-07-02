@@ -4,7 +4,7 @@ const Employee = require("../models/Employees");
 const SalarySlip = require("../models/SalarySlip");
 const { sendEmail } = require("../services/mailService");
 
-// Make sure these are the salary fields you want to save. Adjust as needed!
+// Adjust these as needed to match your payroll structure!
 const SALARY_COMPONENTS = [
   "basic",
   "dearnessAllowance",
@@ -56,14 +56,14 @@ module.exports = {
         0
       );
 
-      // Create or update Employee
+      // Create or update Employee by email
       const employee = await Employee.findOneAndUpdate(
         { email: candidateEmail },
         {
           name: candidateName,
           email: candidateEmail,
           designation: position,
-          department: department, // department name (not id)
+          department, // department name (not id)
           joiningDate: startDate,
           reportingTime,
           salaryBreakup,
@@ -91,7 +91,7 @@ module.exports = {
 
       await SalarySlip.create(slipData);
 
-      // Send request email
+      // Compose and send the email (no AI, just a template)
       const html = `
         <div>
           <p>Dear ${candidateName},</p>

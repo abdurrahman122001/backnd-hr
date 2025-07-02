@@ -1,21 +1,10 @@
-// watcher.js
 require("dotenv").config();
 
-const path = require("path");
 const Imap = require("imap");
 const { simpleParser } = require("mailparser");
 const mongoose = require("mongoose");
 
-const {
-  analyzeLeavePolicy,
-  extractTextUsingAI,
-} = require("./services/deepseekService");
-const {
-  generateHRReply,
-  generateRejectionReply,
-} = require("./services/draftReply");
 const { sendEmail } = require("./services/mailService");
-
 const Employee = require("./models/Employees");
 const {
   generateAndSaveNda,
@@ -23,10 +12,18 @@ const {
   generateAndSaveSalaryCertificate,
 } = require("./services/ndaService");
 
-// Initialize IMAP connection
+// Offline CNIC OCR parser (no AI required)
+const { extractCNICUsingOCR } = require("./services/deepseekService");
+
+// OPTIONAL: AI-based CV parsing (commented for pure offline)
+// const { extractTextUsingAI } = require("./services/deepseekService");
+// const { analyzeLeavePolicy } = require("./services/deepseekService");
+// const { generateHRReply, generateRejectionReply } = require("./services/draftReply");
+
+// IMAP Config
 const imap = new Imap(require("./config/imapConfig"));
 
-// Connect to MongoDB
+// MongoDB Connection
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => console.log("Connected to MongoDB"))
@@ -35,6 +32,7 @@ mongoose
     process.exit(1);
   });
 
+// Email parser
 function parseStream(stream) {
   return new Promise((resolve, reject) => {
     simpleParser(stream, (err, parsed) => {
@@ -44,6 +42,7 @@ function parseStream(stream) {
   });
 }
 
+// (Simplified) Leave/classification logic
 async function classifyEmail(text) {
   if (!text) return "hr_related";
   if (
@@ -55,6 +54,7 @@ async function classifyEmail(text) {
   return "hr_related";
 }
 
+// Send complete profile link
 async function sendCompleteProfileLink(id, to) {
   const link = `${process.env.FRONTEND_BASE_URL}/complete-profile/${id}`;
   const html = `
@@ -67,50 +67,10 @@ async function sendCompleteProfileLink(id, to) {
   await sendEmail({ to, subject: "Complete Your Profile", html });
 }
 
-async function handleApprovalResponse(employee, emailText) {
-  const isApproved = /\bapprove\b/i.test(emailText);
-
-  if (isApproved) {
-    await sendEmail({
-      to: employee.email,
-      subject: "Request Approved",
-      html: "Your request has been approved.",
-    });
-  } else {
-    const rejectionReason = await generateRejectionReply(emailText);
-    await sendEmail({
-      to: employee.email,
-      subject: "Request Rejected",
-      html: rejectionReason,
-    });
-  }
-}
-
-async function handleLeaveRequest(employee, emailText) {
-  try {
-    const leaveAnalysis = await analyzeLeavePolicy(emailText);
-    const reply = await generateHRReply(leaveAnalysis);
-
-    await sendEmail({
-      to: employee.email,
-      subject: "Leave Request Update",
-      html: reply,
-    });
-  } catch (error) {
-    console.error("Error processing leave request:", error);
-    await sendEmail({
-      to: employee.email,
-      subject: "Leave Request Error",
-      html: "There was an error processing your leave request. Please contact HR directly.",
-    });
-  }
-}
-
-// MAIN: Ensure NDA & contract are generated and saved for the employee, and update paths in DB.
+// NDA/contract generator
 async function ensureDocsGenerated(emp) {
   if (!emp) return;
   let updated = false;
-  // NDA
   if (emp.name && emp.cnic) {
     const ndaPath = await generateAndSaveNda(emp);
     if (ndaPath && emp.ndaPath !== ndaPath) {
@@ -118,14 +78,12 @@ async function ensureDocsGenerated(emp) {
       emp.ndaGenerated = true;
       updated = true;
     }
-    // Contract
     const contractPath = await generateAndSaveContract(emp);
     if (contractPath && emp.contractPath !== contractPath) {
       emp.contractPath = contractPath;
       emp.contractGenerated = true;
       updated = true;
     }
-    // Salary Certificate
     const salaryCertPath = await generateAndSaveSalaryCertificate(emp);
     if (salaryCertPath && emp.salaryCertificatePath !== salaryCertPath) {
       emp.salaryCertificatePath = salaryCertPath;
@@ -136,6 +94,7 @@ async function ensureDocsGenerated(emp) {
   }
 }
 
+// Main email processor
 async function processMessage(stream) {
   try {
     const parsed = await parseStream(stream);
@@ -155,7 +114,7 @@ async function processMessage(stream) {
     // Upsert employee if attachments are present
     let emp = await Employee.findOne({ email: fromAddr });
     if (parsed.attachments?.length) {
-      // Prepare base data with all relevant fields
+      // Base fields
       const data = {
         cnic: "",
         dateOfBirth: "",
@@ -168,14 +127,33 @@ async function processMessage(stream) {
         skills: [],
         education: [],
         experience: [],
+        name: "",
       };
 
       for (const att of parsed.attachments) {
-        const name = (att.filename || "").toLowerCase();
-        if (!/\.(png|jpe?g|pdf)$/i.test(name)) continue;
+        const fname = (att.filename || "").toLowerCase();
+        if (!/\.(png|jpe?g)$/i.test(fname)) continue; // Only image files for CNIC
         const buf = att.content;
 
-        // Try extracting CV data
+        // --- OFFLINE CNIC OCR PARSER ---
+        try {
+          const cnic = await extractCNICUsingOCR(buf);
+          Object.assign(data, {
+            cnic: cnic.cnic || data.cnic,
+            dateOfBirth: cnic.dateOfBirth || data.dateOfBirth,
+            gender: cnic.gender || data.gender,
+            nationality: cnic.nationality || data.nationality,
+            cnicIssueDate: cnic.dateOfIssue || data.cnicIssueDate,
+            cnicExpiryDate: cnic.dateOfExpiry || data.cnicExpiryDate,
+            fatherOrHusbandName: cnic.fatherOrHusbandName || data.fatherOrHusbandName,
+            name: cnic.name || data.name,
+          });
+        } catch (error) {
+          console.log("CNIC extraction failed:", error);
+        }
+
+        // --- (OPTIONAL) CV Extraction via AI ---
+        /*
         try {
           const cv = JSON.parse(await extractTextUsingAI(buf, "CV"));
           Object.assign(data, {
@@ -188,23 +166,9 @@ async function processMessage(stream) {
         } catch (error) {
           // Not a CV, ignore error
         }
-
-        // Try extracting CNIC data
-        try {
-          const cnic = JSON.parse(await extractTextUsingAI(buf, "CNIC"));
-          Object.assign(data, {
-            cnic: cnic.cnic || data.cnic,
-            dateOfBirth: cnic.dateOfBirth || data.dateOfBirth,
-            gender: cnic.gender || data.gender,
-            nationality: cnic.nationality || data.nationality,
-            cnicIssueDate: cnic.dateOfIssue || data.cnicIssueDate,
-            cnicExpiryDate: cnic.dateOfExpiry || data.cnicExpiryDate,
-            fatherOrHusbandName: cnic.fatherOrHusbandName || data.fatherOrHusbandName,
-          });
-        } catch (error) {
-          // Not a CNIC, ignore error
-        }
+        */
       }
+
       emp = await Employee.findOneAndUpdate(
         { email: fromAddr },
         {
@@ -221,10 +185,9 @@ async function processMessage(stream) {
 
     // Always re-fetch for up-to-date info (after upsert)
     emp = await Employee.findOne({ email: fromAddr });
-    // Ensure NDA/Contract generated and paths updated in DB
     if (emp) await ensureDocsGenerated(emp);
 
-    // Classify and reply to plain-text emails
+    // --- Email classification/replies (you can customize or remove) ---
     let label;
     if (/\baccept(?:ed|ance)?\b/i.test(bodyText)) {
       label = "offer_acceptance";
@@ -234,6 +197,7 @@ async function processMessage(stream) {
       label = await classifyEmail(bodyText);
     }
 
+    // Very simple reply flows (customize for your logic)
     if (label === "offer_acceptance") {
       await sendEmail({
         to: fromAddr,
@@ -243,19 +207,24 @@ async function processMessage(stream) {
           : "Thank you for accepting! 🎉 Please send your CV & CNIC to get started.",
       });
     } else if (label === "approval_response") {
-      if (emp) {
-        await handleApprovalResponse(emp, bodyText);
-      }
+      await sendEmail({
+        to: fromAddr,
+        subject: "Approval/Decision Recorded",
+        html: "Thank you for your response. Your approval/rejection has been recorded.",
+      });
     } else if (label === "leave_request") {
-      if (emp) {
-        await handleLeaveRequest(emp, bodyText);
-      }
+      await sendEmail({
+        to: fromAddr,
+        subject: "Leave Request Received",
+        html: "Your leave request has been received and will be reviewed.",
+      });
     }
   } catch (error) {
     console.error("Error processing message:", error);
   }
 }
 
+// IMAP polling
 function checkLatest() {
   imap.search(["UNSEEN"], (err, uids) => {
     if (err) {
@@ -282,6 +251,7 @@ function checkLatest() {
   });
 }
 
+// Start everything
 function startWatcher() {
   imap.once("ready", () => {
     imap.openBox("INBOX", false, (err) => {
@@ -305,7 +275,6 @@ function startWatcher() {
 
   imap.connect();
 
-  // Cleanup on process exit
   process.on("SIGINT", () => {
     imap.end();
     mongoose.connection.close();

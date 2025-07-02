@@ -77,3 +77,25 @@ exports.deletePayrollPeriod = async (req, res, next) => {
   }
   res.json({ message: 'Payroll period deleted successfully.' });
 };
+
+exports.updateNonWorkingDays = async (req, res) => {
+  const ownerId = req.user._id;
+  const { nonWorkingDays } = req.body;
+  if (!Array.isArray(nonWorkingDays)) {
+    return res.status(400).json({ error: 'nonWorkingDays must be an array' });
+  }
+
+  const result = await PayrollPeriod.updateMany(
+    { owner: ownerId },
+    { $set: { nonWorkingDays } }
+  );
+
+  res.json({ success: true, modifiedCount: result.modifiedCount });
+};
+
+exports.getNonWorkingDays = async (req, res) => {
+  const ownerId = req.user._id;
+  // Fetch the most recent (or any, since you set all payroll periods)
+  const period = await PayrollPeriod.findOne({ owner: ownerId }).sort({ createdAt: -1 }).lean();
+  res.json({ nonWorkingDays: period?.nonWorkingDays || [] });
+};

@@ -25,8 +25,12 @@ const PayrollPeriodSchema  = new Schema({
     type: String, // ISO date string: 'YYYY-MM-DD'
     default: null
   },
-
   payrollPeriodLength: { type: Number },
+  
+    nonWorkingDays: {
+    type: [String],
+    default: [],
+  },
 }, {
   timestamps: true,
 });
