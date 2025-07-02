@@ -4,7 +4,6 @@ const Employee = require("../models/Employees");
 const SalarySlip = require("../models/SalarySlip");
 const { sendEmail } = require("../services/mailService");
 
-// Adjust these as needed to match your payroll structure!
 const SALARY_COMPONENTS = [
   "basic",
   "dearnessAllowance",
@@ -12,7 +11,7 @@ const SALARY_COMPONENTS = [
   "conveyanceAllowance",
   "medicalAllowance",
   "utilityAllowance",
-  "overtimeComp",
+  "overtimeCompensation", // Backend model field!
   "dislocationAllowance",
   "leaveEncashment",
   "bonus",
@@ -30,68 +29,77 @@ module.exports = {
         candidateName,
         candidateEmail,
         position,
-        department, // department name as string
+        department,
         startDate,
         reportingTime,
-        confirmationDeadlineDate,
         salaryBreakup = {},
-        shifts = []
+        shifts = [],
       } = req.body;
 
-      // Validate required fields
       if (
         !candidateName ||
         !candidateEmail ||
         !position ||
         !department ||
         !startDate ||
-        !reportingTime 
+        !reportingTime
       ) {
         return res.status(400).json({ error: "Missing required fields." });
       }
 
-      // Compute gross salary
-      const grossSalary = SALARY_COMPONENTS.reduce(
-        (sum, key) => sum + (Number(salaryBreakup[key]) || 0),
-        0
-      );
-
-      // Create or update Employee by email
-      const employee = await Employee.findOneAndUpdate(
-        { email: candidateEmail },
-        {
-          name: candidateName,
-          email: candidateEmail,
-          designation: position,
-          department, // department name (not id)
-          joiningDate: startDate,
-          reportingTime,
-          salaryBreakup,
-          shifts,
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
-
-      // Create SalarySlip record
-      const slipData = {
-        employee: employee._id,
+      // Build SalarySlip data object with root fields
+      let slipData = {
+        employee: null, // to be set below
         candidateName,
         candidateEmail,
         position,
         department,
         startDate,
         reportingTime,
-        grossSalary,
         shifts,
-        salaryBreakup: {},
+        grossSalary: 0,
       };
-      SALARY_COMPONENTS.forEach(
-        (k) => (slipData.salaryBreakup[k] = Number(salaryBreakup[k]) || 0)
+
+      // Fill all components (with default 0 if not present)
+      SALARY_COMPONENTS.forEach((field) => {
+        if (field === "overtimeCompensation") {
+          slipData[field] = Number(
+            salaryBreakup.overtimeCompensation ||
+            salaryBreakup.overtimeComp ||
+            0
+          );
+        } else {
+          slipData[field] = Number(salaryBreakup[field] || 0);
+        }
+      });
+
+      // Calculate gross salary
+      slipData.grossSalary = SALARY_COMPONENTS.reduce(
+        (sum, field) => sum + (Number(slipData[field]) || 0),
+        0
       );
 
+      // Save/update employee
+      const employee = await Employee.findOneAndUpdate(
+        { email: candidateEmail },
+        {
+          name: candidateName,
+          email: candidateEmail,
+          designation: position,
+          department,
+          joiningDate: startDate,
+          reportingTime,
+          salaryBreakup: slipData, // For record keeping, not required by your SalarySlip schema
+          shifts,
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+      slipData.employee = employee._id;
+
+      // Save salary slip as flat fields
       await SalarySlip.create(slipData);
 
-      // Compose and send the email (no AI, just a template)
+      // Email logic
       const html = `
         <div>
           <p>Dear ${candidateName},</p>
@@ -104,9 +112,6 @@ module.exports = {
           <p>Best regards,<br/>HR Team</p>
         </div>
       `;
-
-      
-
       await sendEmail({
         to: candidateEmail,
         subject: "Next Step: Please Send Your CNIC & CV",
