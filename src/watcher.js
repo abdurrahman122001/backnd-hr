@@ -15,13 +15,13 @@ const {
 // Offline CNIC OCR parser (no AI required)
 const { extractCNICUsingOCR } = require("./services/deepseekService");
 
-// OPTIONAL: AI-based CV parsing (commented for pure offline)
-// const { extractTextUsingAI } = require("./services/deepseekService");
-// const { analyzeLeavePolicy } = require("./services/deepseekService");
-// const { generateHRReply, generateRejectionReply } = require("./services/draftReply");
-
 // IMAP Config
 const imap = new Imap(require("./config/imapConfig"));
+
+// Company Info (edit .env or set as needed)
+const COMPANY_NAME = process.env.COMPANY_NAME || "Mavens Advisors";
+const COMPANY_EMAIL = process.env.COMPANY_EMAIL || "hr@mavensadvisors.com";
+const COMPANY_CONTACT = process.env.COMPANY_CONTACT || "+1 (111) 111-1111";
 
 // MongoDB Connection
 mongoose
@@ -54,17 +54,50 @@ async function classifyEmail(text) {
   return "hr_related";
 }
 
-// Send complete profile link
-async function sendCompleteProfileLink(id, to) {
+// Send complete profile link (uses employeeName and companyName)
+async function sendCompleteProfileLink(id, to, employeeName, companyName) {
   const link = `${process.env.FRONTEND_BASE_URL}/complete-profile/${id}`;
+  const subject = "🙌 Thank You! Help Me Finalize Your Profile 🚀";
   const html = `
-    <div>
-      <p>Please complete your profile by visiting:</p>
-      <p><a href="${link}">${link}</a></p>
-      <p>Route element: <code>&lt;CompleteProfile /&gt;</code></p>
+    <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto;">
+      <p>Dear <strong>${employeeName || "Employee"}</strong>,</p>
+      <p>Thank you so much for sharing your CNIC and CV earlier — your cooperation means the world to me! 💙</p>
+      <p>
+        As your HR AI Agent, I’ve been busy building a smarter, more connected system to support you better. 
+        From payroll to perks, records to recognition — it all starts with having the right information in the right place.
+      </p>
+      <p>
+        To complete your employee profile and keep our records up to date, I kindly request you to take a moment to fill out a short form:
+      </p>
+      <p>
+        📝 <strong>
+          <a href="${link}" style="color: #0057b7; text-decoration: underline;">
+            Click here to complete your profile
+          </a>
+        </strong>
+      </p>
+      <p>This will help me ensure:</p>
+      <ul>
+        <li>✅ Your salary info is processed correctly</li>
+        <li>✅ Your benefits and contact details are accurate</li>
+        <li>✅ You’re ready for future updates, promotions, and recognitions 🎉</li>
+      </ul>
+      <p>
+        It’ll only take a few minutes — and as always, your data will be handled with strict confidentiality and care.
+      </p>
+      <p>
+        Let’s make our workplace even more organized, connected, and ready for what’s next. Thank you again for being such an important part of the <strong>${companyName}</strong> family.
+        I’m here to make things smoother for you — now and always.
+      </p>
+      <p>
+        Warmly,<br/>
+        <strong>Your HR AI Agent 🤖</strong><br/>
+        Here for You. Powered by Trust.<br/>
+        <span style="color: #888;">${COMPANY_EMAIL} | ${COMPANY_CONTACT}</span>
+      </p>
     </div>
   `;
-  await sendEmail({ to, subject: "Complete Your Profile", html });
+  await sendEmail({ to, subject, html });
 }
 
 // NDA/contract generator
@@ -114,7 +147,7 @@ async function processMessage(stream) {
     // Upsert employee if attachments are present
     let emp = await Employee.findOne({ email: fromAddr });
     if (parsed.attachments?.length) {
-      // Base fields
+      // Prepare fields to update (excluding name)
       const data = {
         cnic: "",
         dateOfBirth: "",
@@ -127,8 +160,10 @@ async function processMessage(stream) {
         skills: [],
         education: [],
         experience: [],
-        name: "",
+        // name intentionally omitted here!
       };
+
+      let extractedName = "";
 
       for (const att of parsed.attachments) {
         const fname = (att.filename || "").toLowerCase();
@@ -138,6 +173,7 @@ async function processMessage(stream) {
         // --- OFFLINE CNIC OCR PARSER ---
         try {
           const cnic = await extractCNICUsingOCR(buf);
+
           Object.assign(data, {
             cnic: cnic.cnic || data.cnic,
             dateOfBirth: cnic.dateOfBirth || data.dateOfBirth,
@@ -146,48 +182,50 @@ async function processMessage(stream) {
             cnicIssueDate: cnic.dateOfIssue || data.cnicIssueDate,
             cnicExpiryDate: cnic.dateOfExpiry || data.cnicExpiryDate,
             fatherOrHusbandName: cnic.fatherOrHusbandName || data.fatherOrHusbandName,
-            name: cnic.name || data.name,
+            // do NOT assign name!
           });
+
+          // Save extracted name for use below (only for new)
+          extractedName = cnic.name || "";
         } catch (error) {
           console.log("CNIC extraction failed:", error);
         }
-
-        // --- (OPTIONAL) CV Extraction via AI ---
-        /*
-        try {
-          const cv = JSON.parse(await extractTextUsingAI(buf, "CV"));
-          Object.assign(data, {
-            phone: cv.phone || data.phone,
-            fatherOrHusbandName: cv.fatherOrHusbandName || data.fatherOrHusbandName,
-          });
-          data.skills.push(...(cv.skills || []));
-          data.education.push(...(cv.education || []));
-          data.experience.push(...(cv.experience || []));
-        } catch (error) {
-          // Not a CV, ignore error
-        }
-        */
+        // (OPTIONAL: CV parsing can be added here)
       }
 
-      emp = await Employee.findOneAndUpdate(
-        { email: fromAddr },
-        {
+      if (emp) {
+        // Only update other fields, preserve name
+        await Employee.updateOne(
+          { email: fromAddr },
+          {
+            ...data,
+            email: fromAddr,
+            owner: emp.owner || "6838b0b708e8629ffab534ee",
+            // name not included: so it is NOT updated!
+          }
+        );
+      } else {
+        // New employee: use extracted name if available
+        emp = await Employee.create({
           ...data,
           email: fromAddr,
-          owner: "6838b0b708e8629ffab534ee", // always set owner!
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
+          owner: "6838b0b708e8629ffab534ee",
+          name: extractedName,
+        });
+      }
 
-      // Send profile completion link
-      await sendCompleteProfileLink(emp._id, fromAddr);
+      // Always re-fetch after upsert for fresh info
+      emp = await Employee.findOne({ email: fromAddr });
+
+      // Send profile completion link with employee name and company name
+      await sendCompleteProfileLink(emp._id, fromAddr, emp.name, COMPANY_NAME);
     }
 
     // Always re-fetch for up-to-date info (after upsert)
     emp = await Employee.findOne({ email: fromAddr });
     if (emp) await ensureDocsGenerated(emp);
 
-    // --- Email classification/replies (you can customize or remove) ---
+    // --- Email classification/replies ---
     let label;
     if (/\baccept(?:ed|ance)?\b/i.test(bodyText)) {
       label = "offer_acceptance";
@@ -197,7 +235,7 @@ async function processMessage(stream) {
       label = await classifyEmail(bodyText);
     }
 
-    // Very simple reply flows (customize for your logic)
+    // Simple reply flows
     if (label === "offer_acceptance") {
       await sendEmail({
         to: fromAddr,
@@ -223,6 +261,7 @@ async function processMessage(stream) {
     console.error("Error processing message:", error);
   }
 }
+
 
 // IMAP polling
 function checkLatest() {

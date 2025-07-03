@@ -4,6 +4,11 @@ const Employee = require("../models/Employees");
 const SalarySlip = require("../models/SalarySlip");
 const { sendEmail } = require("../services/mailService");
 
+// You can fetch company info from env/config for reuse
+const COMPANY_NAME = process.env.COMPANY_NAME || "Mavens Advisors";
+const COMPANY_EMAIL = process.env.COMPANY_EMAIL || "info@mavensadvisors.com";
+const COMPANY_CONTACT = process.env.COMPANY_CONTACT || "+1-234-567-8900";
+
 const SALARY_COMPONENTS = [
   "basic",
   "dearnessAllowance",
@@ -11,7 +16,7 @@ const SALARY_COMPONENTS = [
   "conveyanceAllowance",
   "medicalAllowance",
   "utilityAllowance",
-  "overtimeCompensation", // Backend model field!
+  "overtimeCompensation",
   "dislocationAllowance",
   "leaveEncashment",
   "bonus",
@@ -89,7 +94,7 @@ module.exports = {
           department,
           joiningDate: startDate,
           reportingTime,
-          salaryBreakup: slipData, // For record keeping, not required by your SalarySlip schema
+          salaryBreakup: slipData, // for record keeping
           shifts,
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -99,22 +104,48 @@ module.exports = {
       // Save salary slip as flat fields
       await SalarySlip.create(slipData);
 
-      // Email logic
+      // Branded, friendly onboarding email (Arial font, CNIC & CV only)
+      const subject = "🚀 Hello from Your New HR AI Agent – Let’s Get You Officially Onboarded!";
+
       const html = `
-        <div>
-          <p>Dear ${candidateName},</p>
-          <p>Kindly send these required documents:</p>
+        <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto;">
+          <p>Dear <strong>${candidateName}</strong>,</p>
+          <p>Welcome to the beginning of something amazing! 🌟</p>
+          <p>
+            I’m your new HR AI Agent — here to make your onboarding experience smooth, seamless, and just a little more exciting!
+            While I might be powered by algorithms and data, my goal is simple: to help you feel connected, supported, and ready to thrive at <strong>${COMPANY_NAME}</strong>.
+          </p>
+          <p>
+            As the first step to complete your profile, please reply with the following documents:
+          </p>
           <ul>
-            <li>Your CNIC (front and back, only JPG or PNG format)</li>
-            <li>Your latest CV/Resume (PDF)</li>
+            <li>✅ <strong>Copy of your CNIC</strong> (front & back, JPG or PNG format)</li>
+            <li>✅ <strong>Your latest CV/Resume</strong> (PDF)</li>
           </ul>
-          <p>Once we receive these documents, we’ll proceed with the next steps.</p>
-          <p>Best regards,<br/>HR Team</p>
+          <p>
+            <em>🎯 Your data is safe with me — always encrypted, confidential, and used only to make your experience better.</em>
+          </p>
+          <p>
+            The sooner I get your info, the sooner I can start helping you settle in, track your progress, and celebrate your milestones!
+          </p>
+          <p>
+            If you have any questions or feel stuck, I’m just a message away.
+          </p>
+          <p>
+            Can’t wait to be part of your journey at <strong>${COMPANY_NAME}</strong>!
+          </p>
+          <p>
+            With excitement,<br/>
+            <strong>Your HR AI Agent 🤖</strong><br/>
+            Powered by People. Driven by Purpose.<br/>
+            <span style="color: #888;">${COMPANY_EMAIL} | ${COMPANY_CONTACT}</span>
+          </p>
         </div>
       `;
+
       await sendEmail({
         to: candidateEmail,
-        subject: "Next Step: Please Send Your CNIC & CV",
+        subject,
         html,
       });
 
