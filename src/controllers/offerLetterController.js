@@ -48,9 +48,10 @@ function formatDateDMY(dateInput) {
 // Util for formatting time (e.g., 9:00 AM)
 function formatTime12hr(timeStr) {
   if (!timeStr) return "";
-  let [hour, min] = (timeStr.split(":").length >= 2)
-    ? [parseInt(timeStr.split(":")[0], 10), timeStr.split(":")[1]]
-    : [parseInt(timeStr, 10), "00"];
+  let [hour, min] =
+    timeStr.split(":").length >= 2
+      ? [parseInt(timeStr.split(":")[0], 10), timeStr.split(":")[1]]
+      : [parseInt(timeStr, 10), "00"];
   let suffix = "AM";
   if (hour >= 12) {
     suffix = "PM";
@@ -62,7 +63,7 @@ function formatTime12hr(timeStr) {
 
 // Util for number formatting (e.g., 1000000 -> 1,000,000)
 function formatNumberWithCommas(x) {
-  return Number(x).toLocaleString('en-PK');
+  return Number(x).toLocaleString("en-PK");
 }
 
 module.exports = {
@@ -204,36 +205,35 @@ Karachi, Pakistan
     }
   },
 
-async sendOfferLetter(req, res) {
-  try {
-    const { candidateEmail, letter } = req.body;
-    const candidateName = /Dear\s+(.+?),/i.exec(letter)?.[1] || "Candidate";
-    if (!candidateEmail || !letter) {
-      return res
-        .status(400)
-        .json({ error: "Missing candidateEmail or letter." });
-    }
+  async sendOfferLetter(req, res) {
+    try {
+      const { candidateEmail, letter } = req.body;
+      const candidateName = /Dear\s+(.+?),/i.exec(letter)?.[1] || "Candidate";
+      if (!candidateEmail || !letter) {
+        return res
+          .status(400)
+          .json({ error: "Missing candidateEmail or letter." });
+      }
 
-    await transporter.sendMail({
-      from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,
-      to: candidateEmail,
-      subject: "Welcome Aboard – Offer of Employment",
-      text: letter,
-      html: `
+      await transporter.sendMail({
+        from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,
+        to: candidateEmail,
+        subject: "Welcome Aboard – Offer of Employment",
+        text: letter,
+        html: `
         <div style="font-family: Arial, sans-serif; font-size: 16px; color: #222; line-height: 1.7; white-space: pre-wrap; text-align: left;">
           <p style="margin: 0 0 18px 0; text-align: left;">Dear ${candidateName},</p>
           ${letter
-            .replace(/^Dear .+?,\s*\n?/i, '') // Remove redundant greeting
-            .replace(/\n/g, "<br>")
-          }
+            .replace(/^Dear .+?,\s*\n?/i, "") // Remove redundant greeting
+            .replace(/\n/g, "<br>")}
         </div>
       `,
-    });
+      });
 
-    return res.json({ success: true });
-  } catch (err) {
-    console.error("Email send error:", err);
-    return res.status(500).json({ error: "Failed to send offer letter." });
-  }
-},
+      return res.json({ success: true });
+    } catch (err) {
+      console.error("Email send error:", err);
+      return res.status(500).json({ error: "Failed to send offer letter." });
+    }
+  },
 };
