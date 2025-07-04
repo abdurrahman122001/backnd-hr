@@ -61,10 +61,10 @@ async function sendCompleteProfileLink(id, to, employeeName, companyName) {
   const html = `
     <div style="font-family: 'Comic Sans MS', Comic Sans, cursive, Arial, sans-serif; font-size: 16px; color: #212121; line-height: 1.7; text-align: left; margin:0; padding:0; max-width:600px;">
       <p>Dear <strong>${employeeName || "Employee"}</strong>,</p>
-      <p>Thank you so much for sharing your CNIC and CV earlier — your cooperation means the world to me! 💙</p>
+      <p>Thank you so much for sharing your CNIC and CV earlier your cooperation means the world to me! 💙</p>
       <p>
         As your HR AI Agent, I’ve been busy building a smarter, more connected system to support you better. 
-        From payroll to perks, records to recognition — it all starts with having the right information in the right place.
+        From payroll to perks, records to recognition it all starts with having the right information in the right place.
       </p>
       <p>
         To complete your employee profile and keep our records up to date, I kindly request you to take a moment to fill out a short form:
@@ -83,11 +83,11 @@ async function sendCompleteProfileLink(id, to, employeeName, companyName) {
         <li style="margin-bottom:4px;">✅ You’re ready for future updates, promotions, and recognitions 🎉</li>
       </ul>
       <p>
-        It’ll only take a few minutes — and as always, your data will be handled with strict confidentiality and care.
+        It’ll only take a few minutes and as always, your data will be handled with strict confidentiality and care.
       </p>
       <p>
         Let’s make our workplace even more organized, connected, and ready for what’s next. Thank you again for being such an important part of the <strong>${companyName}</strong> family.
-        I’m here to make things smoother for you — now and always.
+        I’m here to make things smoother for you now and always.
       </p>
       <br/>
 
@@ -268,7 +268,7 @@ async function processMessage(stream) {
         </p>
         <p>
           Our team is looking forward to working with you and helping you grow in your new role.<br>
-          We know that joining a new company can be both exciting and a little overwhelming—but don’t worry, we’re here to guide you every step of the way.
+          We know that joining a new company can be both exciting and a little overwhelming but don’t worry, we’re here to guide you every step of the way.
         </p>
         <p>
           <strong>What’s next?</strong>
