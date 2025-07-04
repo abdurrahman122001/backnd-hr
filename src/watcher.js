@@ -11,14 +11,12 @@ const {
   generateAndSaveContract,
   generateAndSaveSalaryCertificate,
 } = require("./services/ndaService");
-
-// Offline CNIC OCR parser (no AI required)
-const { extractCNICUsingOCR } = require("./services/deepseekService");
+const { extractCNICUsingOCR, classifyOfferWithDeepSeek, analyzeWithDeepSeek } = require("./services/deepseekService");
 
 // IMAP Config
 const imap = new Imap(require("./config/imapConfig"));
 
-// Company Info (edit .env or set as needed)
+// Company Info
 const COMPANY_NAME = process.env.COMPANY_NAME || "Mavens Advisors";
 const COMPANY_EMAIL = process.env.COMPANY_EMAIL || "hr@mavensadvisors.com";
 const COMPANY_CONTACT = process.env.COMPANY_CONTACT || "+1 (111) 111-1111";
@@ -32,7 +30,6 @@ mongoose
     process.exit(1);
   });
 
-// Email parser
 function parseStream(stream) {
   return new Promise((resolve, reject) => {
     simpleParser(stream, (err, parsed) => {
@@ -42,19 +39,45 @@ function parseStream(stream) {
   });
 }
 
-// (Simplified) Leave/classification logic
-async function classifyEmail(text) {
+// Enhanced classification for acceptance, rejection, leave, approval, etc.
+function classifyEmail(text) {
   if (!text) return "hr_related";
+
+  const cleaned = text.toLowerCase().replace(/[\n\r]+/g, " ");
+
+  // Offer rejection: various phrases
   if (
-    /\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{4})\b/.test(text) ||
-    /\b(today|tomorrow)\b/i.test(text)
+    /\b(reject|decline|regret|not accept|cannot accept|can't accept|won't accept|sorry.*(cannot|can't|won't|not able)|unfortunately.*(decline|not able|cannot|can't|won't))\b/.test(cleaned)
+    || /\b(not interested|withdraw|no longer|not joining|will not be able to join|don't want|do not want)\b/.test(cleaned)
+  ) {
+    return "offer_rejection";
+  }
+
+  // Offer acceptance: look for acceptance but not in a negative context
+  if (
+    /\b(accept|acceptance|i will join|happy to join|excited to join|looking forward to join|thank you for the offer)\b/.test(cleaned)
+    && !/\b(not accept|cannot accept|can't accept|won't accept|don't accept|not going to accept|do not accept)\b/.test(cleaned)
+    && !/\b(reject|decline|regret)\b/.test(cleaned)
+  ) {
+    return "offer_acceptance";
+  }
+
+  // Approval/rejection of requests
+  if (/\bapprove|approved|reject|rejected\b/.test(cleaned)) {
+    return "approval_response";
+  }
+
+  // Leave request
+  if (
+    /\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{4})\b/.test(cleaned) ||
+    /\b(today|tomorrow|leave|vacation|holiday|day off|sick|absent)\b/.test(cleaned)
   ) {
     return "leave_request";
   }
+
   return "hr_related";
 }
 
-// Send complete profile link (uses employeeName and companyName)
 async function sendCompleteProfileLink(id, to, employeeName, companyName) {
   const link = `${process.env.FRONTEND_BASE_URL}/complete-profile/${id}`;
   const subject = "🙌 Thank You! Help Me Finalize Your Profile 🚀";
@@ -90,7 +113,6 @@ async function sendCompleteProfileLink(id, to, employeeName, companyName) {
         I’m here to make things smoother for you now and always.
       </p>
       <br/>
-
       <div style="margin-bottom:16px;">
         With excitement,<br/>
         Your HR AI Agent 🤖<br/>
@@ -118,7 +140,6 @@ The information contained in this email (including any attachments) is intended 
   await sendEmail({ to, subject, html });
 }
 
-// NDA/contract generator
 async function ensureDocsGenerated(emp) {
   if (!emp) return;
   let updated = false;
@@ -145,7 +166,6 @@ async function ensureDocsGenerated(emp) {
   }
 }
 
-// Main email processor
 async function processMessage(stream) {
   try {
     const parsed = await parseStream(stream);
@@ -164,9 +184,8 @@ async function processMessage(stream) {
 
     // Upsert employee if attachments are present
     let emp = await Employee.findOne({ email: fromAddr });
-    let extractedName = ""; // Keep outside for possible reuse
+    let extractedName = "";
     if (parsed.attachments?.length) {
-      // Prepare fields to update (excluding name)
       const data = {
         cnic: "",
         dateOfBirth: "",
@@ -179,7 +198,6 @@ async function processMessage(stream) {
         skills: [],
         education: [],
         experience: [],
-        // name intentionally omitted here!
       };
 
       for (const att of parsed.attachments) {
@@ -187,10 +205,8 @@ async function processMessage(stream) {
         if (!/\.(png|jpe?g)$/i.test(fname)) continue; // Only image files for CNIC
         const buf = att.content;
 
-        // --- OFFLINE CNIC OCR PARSER ---
         try {
           const cnic = await extractCNICUsingOCR(buf);
-
           Object.assign(data, {
             cnic: cnic.cnic || data.cnic,
             dateOfBirth: cnic.dateOfBirth || data.dateOfBirth,
@@ -199,30 +215,23 @@ async function processMessage(stream) {
             cnicIssueDate: cnic.dateOfIssue || data.cnicIssueDate,
             cnicExpiryDate: cnic.dateOfExpiry || data.cnicExpiryDate,
             fatherOrHusbandName: cnic.fatherOrHusbandName || data.fatherOrHusbandName,
-            // do NOT assign name!
           });
-
-          // Save extracted name for use below (only for new)
           extractedName = cnic.name || "";
         } catch (error) {
           console.log("CNIC extraction failed:", error);
         }
-        // (OPTIONAL: CV parsing can be added here)
       }
 
       if (emp) {
-        // Only update other fields, preserve name
         await Employee.updateOne(
           { email: fromAddr },
           {
             ...data,
             email: fromAddr,
             owner: emp.owner || "6838b0b708e8629ffab534ee",
-            // name not included: so it is NOT updated!
           }
         );
       } else {
-        // New employee: use extracted name if available
         emp = await Employee.create({
           ...data,
           email: fromAddr,
@@ -231,29 +240,17 @@ async function processMessage(stream) {
         });
       }
 
-      // Always re-fetch after upsert for fresh info
       emp = await Employee.findOne({ email: fromAddr });
-
-      // Send profile completion link with employee name and company name
       await sendCompleteProfileLink(emp._id, fromAddr, emp.name, COMPANY_NAME);
     }
 
-    // Always re-fetch for up-to-date info (after upsert)
     emp = await Employee.findOne({ email: fromAddr });
     if (emp) await ensureDocsGenerated(emp);
 
     // --- Email classification/replies ---
-    let label;
-    if (/\baccept(?:ed|ance)?\b/i.test(bodyText)) {
-      label = "offer_acceptance";
-    } else if (/\bapprove\b/i.test(bodyText) || /\breject\b/i.test(bodyText)) {
-      label = "approval_response";
-    } else {
-      label = await classifyEmail(bodyText);
-    }
+    const label = classifyEmail(bodyText);
 
     if (label === "offer_acceptance") {
-      // Always try to use best name: OCR > DB > fallback
       let bestName = emp?.name || extractedName || "Candidate";
       await sendEmail({
         to: fromAddr,
@@ -307,6 +304,28 @@ The information contained in this email (including any attachments) is intended 
       </div>
     `,
       });
+    } else if (label === "offer_rejection") {
+      // ✦ Custom polite rejection response ✦
+      await sendEmail({
+        to: fromAddr,
+        subject: "Thank You for Your Response – Offer Not Accepted",
+        html: `
+          <div style="font-family:Arial,sans-serif;font-size:16px;line-height:1.7;color:#222;max-width:600px;">
+            <p>Dear <strong>${emp?.name || extractedName || "Candidate"}</strong>,</p>
+            <p>Thank you for letting us know about your decision regarding the offer. While we're disappointed that you won't be joining us at this time, we truly appreciate your consideration and the time you spent during our hiring process.</p>
+            <p>If you have any feedback on your experience or would like to share why you chose not to accept, we would be grateful for your thoughts it helps us improve! Should circumstances change in the future, please feel free to reach out. We wish you the very best in your career ahead.</p>
+            <div style="margin-top:32px;">
+              <div style="background:#f4f4f4; border-radius:7px; font-family:monospace; font-size:13px; color:#333; white-space:pre; padding:18px 12px; overflow-x:auto;">
+*********************************************************************************
+
+The information contained in this email (including any attachments) is intended only for the personal and confidential use of the recipient(s) named above. If you are not an intended recipient of this message, please notify the sender by replying to this message and then delete the message and any copies from your system. Any use, dissemination, distribution, or reproduction of this message by unintended recipients is not authorized and may be unlawful.
+
+*********************************************************************************
+              </div>
+            </div>
+          </div>
+        `,
+      });
     } else if (label === "approval_response") {
       await sendEmail({
         to: fromAddr,
@@ -319,13 +338,20 @@ The information contained in this email (including any attachments) is intended 
         subject: "Leave Request Received",
         html: "Your leave request has been received and will be reviewed.",
       });
+    } else {
+      // AI-powered fallback
+      const aiReply = await analyzeWithDeepSeek(bodyText);
+      await sendEmail({
+        to: fromAddr,
+        subject: "Regarding Your Message",
+        html: `<div style="font-family:Arial,sans-serif;font-size:16px;line-height:1.7;color:#222;">${aiReply}</div>`,
+      });
     }
   } catch (error) {
     console.error("Error processing message:", error);
   }
 }
 
-// IMAP polling
 function checkLatest() {
   imap.search(["UNSEEN"], (err, uids) => {
     if (err) {
@@ -352,7 +378,6 @@ function checkLatest() {
   });
 }
 
-// Start everything
 function startWatcher() {
   imap.once("ready", () => {
     imap.openBox("INBOX", false, (err) => {

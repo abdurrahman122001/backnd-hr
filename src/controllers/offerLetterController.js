@@ -61,25 +61,36 @@ function formatNumberWithCommas(x) {
   return Number(x).toLocaleString("en-PK");
 }
 
-// --- Signature Block (Comic Sans, links styled) ---
+// --- Signature Block (Comic Sans, but contact details neatly in a table) ---
 const EMAIL_SIGNATURE = `
-  <div style="font-family: 'Comic Sans MS', Comic Sans, cursive; font-size: 17px; margin-top:28px; margin-bottom:12px; line-height:1.6;">
-    Regards,<br>
-    <span style="font-weight:bold;">Human Resource Department</span><br>
-    <span style="font-style: italic;">Mavens Advisor</span><br><br>
-    <div>
-      <b>T</b> &nbsp; +44 7451 285285<br>
-      <b>E</b> &nbsp; <a href="mailto:HR@mavensadvisor.com" style="color:#0057b7; text-decoration:underline;">HR@mavensadvisor.com</a><br>
-      <b>W</b> &nbsp; <a href="https://www.mavensadvisor.com" style="color:#0057b7; text-decoration:underline;">www.mavensadvisor.com</a>
+  <div style="font-family: 'Comic Sans MS', Comic Sans, cursive; font-size: 15px; margin-top:32px; margin-bottom:0; line-height:1.6;">
+    <div style="margin-bottom:10px;">
+      Regards,<br>
+      <span style="font-weight:bold;">Human Resource Department</span><br>
+      <span style="font-style: italic;">Mavens Advisor</span>
     </div>
-    <br>
-    Mavens Advisor LLC<br>
-    East Grand Boulevard, Detroit<br>
-    Michigan, United States
+    <table style="font-family:inherit; font-size:15px; line-height:1.4; margin-bottom:8px;">
+      <tr>
+        <td style="padding-right:12px;"><b>T</b></td>
+        <td>+44 7451 285285</td>
+      </tr>
+      <tr>
+        <td style="padding-right:12px;"><b>E</b></td>
+        <td><a href="mailto:HR@mavensadvisor.com" style="color:#0057b7; text-decoration:underline;">HR@mavensadvisor.com</a></td>
+      </tr>
+      <tr>
+        <td style="padding-right:12px;"><b>W</b></td>
+        <td><a href="https://www.mavensadvisor.com" style="color:#0057b7; text-decoration:underline;">www.mavensadvisor.com</a></td>
+      </tr>
+    </table>
+    <div>
+      Mavens Advisor LLC<br>
+      East Grand Boulevard, Detroit<br>
+      Michigan, United States
+    </div>
   </div>
 `;
 
-// --- Disclaimer Block (monospace) ---
 const EMAIL_DISCLAIMER = `
   <div style="margin-top:28px;">
     <div style="background:#f4f4f4; border-radius:7px; font-family:monospace; font-size:13px; color:#333; white-space:pre; padding:18px 12px; overflow-x:auto;">
@@ -173,8 +184,7 @@ To move forward, please confirm your acceptance of this offer by ${formattedDead
 By accepting this offer, you also agree to the terms set forth in our Employment Contract and Non-Disclosure Agreement (NDA), which we will share with you separately.
 
 We’re truly excited to have you join us. Your future teammates are just as eager to welcome you, support you, and learn from you as you are to begin this new chapter. Let’s make great things happen together!
-
-    `.trim();
+      `.trim();
 
       return res.json({
         letter,
@@ -228,16 +238,25 @@ We’re truly excited to have you join us. Your future teammates are just as eag
           .json({ error: "Missing required fields for sending offer." });
       }
 
-      // Create Employee (department as name, not ObjectId)
-      const employee = await Employee.create({
-        name: candidate,
-        email: candidateEmail,
-        designation: position,
-        startDate,
-        department: department || null, // Store department NAME here!
-        owner: req.user?._id,
-        createdBy: req.user?._id,
-      });
+      // Check for existing employee to enable threading (optional)
+      let employee = await Employee.findOne({ email: candidateEmail });
+      if (!employee) {
+        employee = await Employee.create({
+          name: candidate,
+          email: candidateEmail,
+          designation: position,
+          startDate,
+          department: department || null,
+          owner: req.user?._id,
+          createdBy: req.user?._id,
+        });
+      } else {
+        employee.name = candidate;
+        employee.designation = position;
+        employee.startDate = startDate;
+        employee.department = department || employee.department;
+        await employee.save();
+      }
 
       // Create SalarySlip
       const grossSalaryRaw = SALARY_COMPONENTS.reduce(
@@ -262,15 +281,12 @@ We’re truly excited to have you join us. Your future teammates are just as eag
       await SalarySlip.create(slipData);
 
       // --- HTML Email Render ---
-      // (Main body = Arial, signature = Comic Sans, disclaimer = monospace)
       const lines = letter.split("\n");
       let htmlBody = "";
       let inList = false;
 
       for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trim();
-
-        // If line is a bullet
         if (/^(\-|\*|•)\s+/.test(line)) {
           if (!inList) {
             htmlBody += "<ul style='margin:0 0 1em 2em;padding:0;'>";
@@ -293,7 +309,7 @@ We’re truly excited to have you join us. Your future teammates are just as eag
       if (inList) htmlBody += "</ul>";
 
       const html = `
-      <div style="font-family: Arial, Helvetica, 'Segoe UI', system-ui, sans-serif; font-size: 17px; color: #222; line-height: 1.7; text-align: left; margin:0; padding:0; max-width:600px;">
+      <div style="font-family: Arial, Helvetica, 'Segoe UI', system-ui, sans-serif; font-size: 16px; color: #222; line-height: 1.7; text-align: left; margin:0; padding:0; max-width:600px;">
         ${htmlBody}
         ${EMAIL_SIGNATURE}
         ${EMAIL_DISCLAIMER}
@@ -304,13 +320,13 @@ We’re truly excited to have you join us. Your future teammates are just as eag
         from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,
         to: candidateEmail,
         subject: "Welcome Aboard – Offer of Employment",
-        text: letter + "\n\n" + // add signature/disclaimer in text version too
+        text: letter + "\n\n" +
 `Regards,
 
 Human Resource Department
 Mavens Advisor
 
-T          +92 312 3850846  
+T          +44 7451 285285  
 E          HR@mavensadvisor.com  
 W         www.mavensadvisor.com
 

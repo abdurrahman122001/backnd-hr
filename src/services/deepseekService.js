@@ -2,23 +2,22 @@ const fs = require("fs");
 const Tesseract = require("tesseract.js");
 const axios = require("axios");
 
-// Use your DeepSeek model (free) on OpenRouter
-const DEEPSEEK_MODEL = "deepseek/deepseek-r1-0528:free"; // You can swap with another free DeepSeek model if needed
+const DEEPSEEK_MODEL = "deepseek/deepseek-r1-0528:free";
 
+// OCR extraction from image
 async function extractTextFromImage(fileData) {
   const imageBuffer = Buffer.isBuffer(fileData)
     ? fileData
     : fs.readFileSync(fileData);
 
-  const {
-    data: { text },
-  } = await Tesseract.recognize(imageBuffer, "eng", {
+  const { data: { text } } = await Tesseract.recognize(imageBuffer, "eng", {
     logger: (m) => console.log(m.status, m.progress),
   });
 
   return text;
 }
 
+// Use DeepSeek to extract CNIC info from OCR text
 async function extractCNICWithDeepSeek(ocrText) {
   const prompt = `
 You are a professional Pakistani CNIC parser.
@@ -43,9 +42,7 @@ Text:
     "https://openrouter.ai/api/v1/chat/completions",
     {
       model: DEEPSEEK_MODEL,
-      messages: [
-        { role: "user", content: prompt }
-      ],
+      messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
       max_tokens: 512,
     },
@@ -61,7 +58,6 @@ Text:
 
   let info = {};
   try {
-    // Try direct parse
     info = JSON.parse(content);
   } catch {
     // Try to extract JSON object from messy output
@@ -79,9 +75,82 @@ Text:
   return info;
 }
 
-// Fallback: Manual Regex extractor (improve patterns as needed)
+// AI classifier for offer response (accept, reject, or other)
+async function classifyOfferWithDeepSeek(text) {
+  const prompt = `
+You are an HR assistant. Given the following email text from a candidate, classify if the candidate is:
+- "accept" (accepting/joining the offer),
+- "reject" (not accepting or rejecting the offer),
+- or "other" (none of the above).
+
+Respond with exactly one word: "accept", "reject", or "other". No explanation.
+
+Email:
+"""${text}"""
+`;
+
+  try {
+    const res = await axios.post(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        model: DEEPSEEK_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0,
+        max_tokens: 8,
+      },
+      {
+        headers: {
+          "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const output = res.data.choices?.[0]?.message?.content?.trim().toLowerCase();
+    if (output && (output === "accept" || output === "reject" || output === "other")) {
+      return output;
+    }
+    return "other";
+  } catch (err) {
+    console.error("DeepSeek offer classification failed:", err);
+    return "other";
+  }
+}
+
+// HR summarizer/fallback reply generator
+async function analyzeWithDeepSeek(text) {
+  const prompt = `
+You are an HR assistant. Analyze the following employee email and give a concise summary in simple English. Suggest a friendly, helpful next action.
+
+Email:
+"""${text}"""
+`;
+
+  try {
+    const res = await axios.post(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        model: DEEPSEEK_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
+        max_tokens: 256,
+      },
+      {
+        headers: {
+          "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return res.data.choices?.[0]?.message?.content || "Thank you for your message. We have received your response.";
+  } catch (err) {
+    console.error("DeepSeek analysis failed:", err);
+    return "Thank you for your message. We have received your response.";
+  }
+}
+
+// Fallback: Manual Regex extractor (if DeepSeek fails)
 function fallbackCNICExtractor(ocrText) {
-  // Very basic demo patterns. Improve these for your actual OCR format!
   const name = (ocrText.match(/Name\s*[:\-]?\s*([A-Z ]+)/i) || [])[1] || "";
   const fatherOrHusbandName = (ocrText.match(/Father(?:'s)? Name\s*[:\-]?\s*([A-Z ]+)/i) || [])[1] || "";
   const cnic = (ocrText.match(/\b\d{5}-\d{7}-\d{1}\b/) || [])[0] || "";
@@ -103,15 +172,13 @@ function fallbackCNICExtractor(ocrText) {
   };
 }
 
+// Main CNIC OCR and parser
 async function extractCNICUsingOCR(fileData) {
-  // 1. OCR
   const ocrText = await extractTextFromImage(fileData);
   console.log("OCR Result:\n", ocrText);
 
-  // 2. DeepSeek LLM Extraction
   try {
     const info = await extractCNICWithDeepSeek(ocrText);
-    // Defensive clean: fallback to "" for missing fields
     return {
       name: info.name || "",
       fatherOrHusbandName: info.fatherOrHusbandName || "",
@@ -124,11 +191,12 @@ async function extractCNICUsingOCR(fileData) {
     };
   } catch (err) {
     console.error("DeepSeek extraction failed, falling back to manual regex:", err);
-    // Fallback: use regex-based extraction
-    const fallbackInfo = fallbackCNICExtractor(ocrText);
-    return fallbackInfo;
+    return fallbackCNICExtractor(ocrText);
   }
 }
 
-module.exports = { extractCNICUsingOCR };
-exports.extractCNICUsingOCR = extractCNICUsingOCR;
+module.exports = {
+  extractCNICUsingOCR,
+  classifyOfferWithDeepSeek,
+  analyzeWithDeepSeek,
+};
