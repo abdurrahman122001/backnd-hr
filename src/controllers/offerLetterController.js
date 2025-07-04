@@ -34,7 +34,6 @@ const SALARY_COMPONENTS = [
   "othersAllowances",
 ];
 
-// Util for formatting dates (e.g., 12 July 2025)
 function formatDateDMY(dateInput) {
   if (!dateInput) return "";
   const dateObj = new Date(dateInput);
@@ -44,8 +43,6 @@ function formatDateDMY(dateInput) {
   const year = dateObj.getFullYear();
   return `${day} ${month} ${year}`;
 }
-
-// Util for formatting time (e.g., 9:00 AM)
 function formatTime12hr(timeStr) {
   if (!timeStr) return "";
   let [hour, min] =
@@ -60,13 +57,43 @@ function formatTime12hr(timeStr) {
   if (hour === 0) hour = 12;
   return `${hour}:${min.padStart(2, "0")} ${suffix}`;
 }
-
-// Util for number formatting (e.g., 1000000 -> 1,000,000)
 function formatNumberWithCommas(x) {
   return Number(x).toLocaleString("en-PK");
 }
 
+// --- Signature Block (Comic Sans, links styled) ---
+const EMAIL_SIGNATURE = `
+  <div style="font-family: 'Comic Sans MS', Comic Sans, cursive; font-size: 17px; margin-top:28px; margin-bottom:12px; line-height:1.6;">
+    Regards,<br><br>
+    <span style="font-weight:bold;">Human Resource Department</span><br>
+    <span style="font-style: italic;">Mavens Advisor</span><br><br>
+    <div>
+      <b>T</b> &nbsp; +44 7451 285285<br>
+      <b>E</b> &nbsp; <a href="mailto:HR@mavensadvisor.com" style="color:#0057b7; text-decoration:underline;">HR@mavensadvisor.com</a><br>
+      <b>W</b> &nbsp; <a href="https://www.mavensadvisor.com" style="color:#0057b7; text-decoration:underline;">www.mavensadvisor.com</a>
+    </div>
+    <br>
+    Mavens Advisor LLC<br>
+    East Grand Boulevard, Detroit<br>
+    Michigan, United States
+  </div>
+`;
+
+// --- Disclaimer Block (monospace) ---
+const EMAIL_DISCLAIMER = `
+  <div style="margin-top:28px;">
+    <div style="background:#f4f4f4; border-radius:7px; font-family:monospace; font-size:13px; color:#333; white-space:pre; padding:18px 12px; overflow-x:auto;">
+*********************************************************************************
+
+The information contained in this email (including any attachments) is intended only for the personal and confidential use of the recipient(s) named above. If you are not an intended recipient of this message, please notify the sender by replying to this message and then delete the message and any copies from your system. Any use, dissemination, distribution, or reproduction of this message by unintended recipients is not authorized and may be unlawful.
+
+*********************************************************************************
+    </div>
+  </div>
+`;
+
 module.exports = {
+  // Only generates letter (NO DB WRITE)
   async generateOfferLetter(req, res) {
     try {
       const {
@@ -77,10 +104,9 @@ module.exports = {
         startDate,
         reportingTime,
         confirmationDeadlineDate,
-        departmentId,
+        department, // DEPARTMENT NAME should be sent from frontend
       } = req.body;
 
-      // Validate required fields
       if (
         !candidateName ||
         !candidateEmail ||
@@ -97,48 +123,6 @@ module.exports = {
         return res.status(400).json({ error: "No user context found." });
       }
 
-      // Format dates/times
-      const formattedStartDate = formatDateDMY(startDate);
-      const formattedDeadline = formatDateDMY(confirmationDeadlineDate);
-      const formattedTime = formatTime12hr(reportingTime);
-
-      // Compute gross salary
-      const grossSalaryRaw = SALARY_COMPONENTS.reduce(
-        (sum, k) => sum + (Number(salaryBreakup[k]) || 0),
-        0
-      );
-      const grossSalary = formatNumberWithCommas(grossSalaryRaw);
-
-      // 1. CREATE EMPLOYEE RECORD
-      const employee = await Employee.create({
-        name: candidateName,
-        email: candidateEmail,
-        designation: position,
-        startDate,
-        department: departmentId || null,
-        owner: req.user._id,
-        createdBy: req.user._id,
-      });
-
-      // 2. CREATE SALARY SLIP RECORD
-      const slipData = {
-        employee: employee._id,
-        candidateName,
-        candidateEmail,
-        position,
-        startDate,
-        reportingTime,
-        confirmationDeadlineDate,
-        grossSalary: grossSalaryRaw,
-        owner: req.user._id,
-        createdBy: req.user._id,
-      };
-      SALARY_COMPONENTS.forEach(
-        (k) => (slipData[k] = Number(salaryBreakup[k]) || 0)
-      );
-      await SalarySlip.create(slipData);
-
-      // 3. Get company info by owner (force ObjectId type)
       let ownerId = req.user._id;
       if (!(ownerId instanceof mongoose.Types.ObjectId)) {
         ownerId = new mongoose.Types.ObjectId(ownerId);
@@ -149,14 +133,22 @@ module.exports = {
         return res.status(404).json({ error: "Company profile not found." });
       }
 
-      // 4. Always use only the address field
       let address = company.address;
       if (!address || typeof address !== "string" || !address.trim()) {
         address = "GULSHAN-E-MAYMAR, KARACHI";
-        console.warn("Company address is missing for owner:", req.user._id);
       }
 
-      // 5. Compose the offer letter body (NO subject in body)
+      const formattedStartDate = formatDateDMY(startDate);
+      const formattedDeadline = formatDateDMY(confirmationDeadlineDate);
+      const formattedTime = formatTime12hr(reportingTime);
+
+      const grossSalaryRaw = SALARY_COMPONENTS.reduce(
+        (sum, k) => sum + (Number(salaryBreakup[k]) || 0),
+        0
+      );
+      const grossSalary = formatNumberWithCommas(grossSalaryRaw);
+
+      // --- TEXT VERSION (for .text and editing) ---
       const letter = `
 Dear ${candidateName},
 
@@ -173,6 +165,7 @@ If you accept this offer, your anticipated start date will be ${formattedStartDa
 In this role, you’ll be working 45 hours per week, from Monday to Friday – a full week of opportunities to grow, collaborate, and contribute.
 
 To move forward, please confirm your acceptance of this offer by ${formattedDeadline}. On your first day, we kindly ask that you bring:
+
 - All original educational and professional certificates
 - Original CNIC with a photocopy
 - Two recent passport-sized photographs
@@ -181,22 +174,20 @@ By accepting this offer, you also agree to the terms set forth in our Employment
 
 We’re truly excited to have you join us. Your future teammates are just as eager to welcome you, support you, and learn from you as you are to begin this new chapter. Let’s make great things happen together!
 
-Regards,
-Human Resource Department
-Nash Technologies Pvt. Ltd.
+    `.trim();
 
-T         +92 (0)21 137 448 824   
-E         hr@mavensadvisor.com
-W         https://mavensadvisor.com/
-
-Nash Technologies Pvt Ltd
-Midway Commercial, Bahria Town Karachi
-Karachi, Pakistan
-
-      `.trim();
-
-      // Return only the body (no subject), grossSalaryRaw as number
-      return res.json({ letter, grossSalary: grossSalaryRaw });
+      return res.json({
+        letter,
+        grossSalary: grossSalaryRaw,
+        salaryBreakup,
+        position,
+        candidateName,
+        candidateEmail,
+        startDate,
+        reportingTime,
+        confirmationDeadlineDate,
+        department,
+      });
     } catch (err) {
       console.error("Offer gen error:", err?.response?.data || err);
       return res
@@ -205,29 +196,135 @@ Karachi, Pakistan
     }
   },
 
+  // Actually sends the letter and CREATES Employee & SalarySlip
   async sendOfferLetter(req, res) {
     try {
-      const { candidateEmail, letter } = req.body;
-      const candidateName = /Dear\s+(.+?),/i.exec(letter)?.[1] || "Candidate";
-      if (!candidateEmail || !letter) {
+      const {
+        candidateEmail,
+        letter,
+        salaryBreakup,
+        position,
+        candidateName,
+        startDate,
+        reportingTime,
+        confirmationDeadlineDate,
+        department, // <-- department name (string)
+      } = req.body;
+      const candidate =
+        candidateName || /Dear\s+(.+?),/i.exec(letter)?.[1] || "Candidate";
+
+      if (
+        !candidateEmail ||
+        !letter ||
+        !salaryBreakup ||
+        !position ||
+        !candidate ||
+        !startDate ||
+        !reportingTime ||
+        !confirmationDeadlineDate
+      ) {
         return res
           .status(400)
-          .json({ error: "Missing candidateEmail or letter." });
+          .json({ error: "Missing required fields for sending offer." });
       }
+
+      // Create Employee (department as name, not ObjectId)
+      const employee = await Employee.create({
+        name: candidate,
+        email: candidateEmail,
+        designation: position,
+        startDate,
+        department: department || null, // Store department NAME here!
+        owner: req.user?._id,
+        createdBy: req.user?._id,
+      });
+
+      // Create SalarySlip
+      const grossSalaryRaw = SALARY_COMPONENTS.reduce(
+        (sum, k) => sum + (Number(salaryBreakup[k]) || 0),
+        0
+      );
+      const slipData = {
+        employee: employee._id,
+        candidateName: candidate,
+        candidateEmail,
+        position,
+        startDate,
+        reportingTime,
+        confirmationDeadlineDate,
+        grossSalary: grossSalaryRaw,
+        owner: req.user?._id,
+        createdBy: req.user?._id,
+      };
+      SALARY_COMPONENTS.forEach(
+        (k) => (slipData[k] = Number(salaryBreakup[k]) || 0)
+      );
+      await SalarySlip.create(slipData);
+
+      // --- HTML Email Render ---
+      // (Main body = Arial, signature = Comic Sans, disclaimer = monospace)
+      const lines = letter.split("\n");
+      let htmlBody = "";
+      let inList = false;
+
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+
+        // If line is a bullet
+        if (/^(\-|\*|•)\s+/.test(line)) {
+          if (!inList) {
+            htmlBody += "<ul style='margin:0 0 1em 2em;padding:0;'>";
+            inList = true;
+          }
+          htmlBody += `<li style="margin-bottom:4px;">${line.replace(
+            /^(\-|\*|•)\s+/,
+            ""
+          )}</li>`;
+        } else if (line === "") {
+          continue;
+        } else {
+          if (inList) {
+            htmlBody += "</ul>";
+            inList = false;
+          }
+          htmlBody += `<p style="margin:0 0 1em 0;">${line}</p>`;
+        }
+      }
+      if (inList) htmlBody += "</ul>";
+
+      const html = `
+      <div style="font-family: Arial, Helvetica, 'Segoe UI', system-ui, sans-serif; font-size: 17px; color: #222; line-height: 1.7; text-align: left; margin:0; padding:0; max-width:600px;">
+        ${htmlBody}
+        ${EMAIL_SIGNATURE}
+        ${EMAIL_DISCLAIMER}
+      </div>
+      `;
 
       await transporter.sendMail({
         from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,
         to: candidateEmail,
         subject: "Welcome Aboard – Offer of Employment",
-        text: letter,
-        html: `
-        <div style="font-family: Arial, sans-serif; font-size: 16px; color: #222; line-height: 1.7; white-space: pre-wrap; text-align: left;">
-          <p style="margin: 0 0 18px 0; text-align: left;">Dear ${candidateName},</p>
-          ${letter
-            .replace(/^Dear .+?,\s*\n?/i, "") // Remove redundant greeting
-            .replace(/\n/g, "<br>")}
-        </div>
-      `,
+        text: letter + "\n\n" + // add signature/disclaimer in text version too
+`Regards,
+
+Human Resource Department
+Mavens Advisor
+
+T          +44 7451 285285  
+E          HR@mavensadvisor.com  
+W         www.mavensadvisor.com
+
+Mavens Advisor LLC  
+East Grand Boulevard, Detroit  
+Michigan, United States
+
+*********************************************************************************
+
+The information contained in this email (including any attachments) is intended only for the personal and confidential use of the recipient(s) named above. If you are not an intended recipient of this message, please notify the sender by replying to this message and then delete the message and any copies from your system. Any use, dissemination, distribution, or reproduction of this message by unintended recipients is not authorized and may be unlawful.
+
+*********************************************************************************
+`,
+        html: html,
       });
 
       return res.json({ success: true });

@@ -4,10 +4,10 @@ const Employee = require("../models/Employees");
 const SalarySlip = require("../models/SalarySlip");
 const { sendEmail } = require("../services/mailService");
 
-// You can fetch company info from env/config for reuse
 const COMPANY_NAME = process.env.COMPANY_NAME || "Mavens Advisors";
-const COMPANY_EMAIL = process.env.COMPANY_EMAIL || "info@mavensadvisors.com";
-const COMPANY_CONTACT = process.env.COMPANY_CONTACT || "+1-234-567-8900";
+const COMPANY_EMAIL = process.env.COMPANY_EMAIL || "HR@mavensadvisor.com";
+const COMPANY_CONTACT = process.env.COMPANY_CONTACT || "+44 7451 285285";
+const COMPANY_WEBSITE = process.env.COMPANY_WEBSITE || "www.mavensadvisor.com";
 
 const SALARY_COMPONENTS = [
   "basic",
@@ -52,7 +52,7 @@ module.exports = {
         return res.status(400).json({ error: "Missing required fields." });
       }
 
-      // Build SalarySlip data object with root fields
+      // Build SalarySlip data object
       let slipData = {
         employee: null, // to be set below
         candidateName,
@@ -65,7 +65,6 @@ module.exports = {
         grossSalary: 0,
       };
 
-      // Fill all components (with default 0 if not present)
       SALARY_COMPONENTS.forEach((field) => {
         if (field === "overtimeCompensation") {
           slipData[field] = Number(
@@ -78,7 +77,6 @@ module.exports = {
         }
       });
 
-      // Calculate gross salary
       slipData.grossSalary = SALARY_COMPONENTS.reduce(
         (sum, field) => sum + (Number(slipData[field]) || 0),
         0
@@ -94,33 +92,32 @@ module.exports = {
           department,
           joiningDate: startDate,
           reportingTime,
-          salaryBreakup: slipData, // for record keeping
+          salaryBreakup: slipData,
           shifts,
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
       slipData.employee = employee._id;
 
-      // Save salary slip as flat fields
       await SalarySlip.create(slipData);
 
-      // Branded, friendly onboarding email (Arial font, CNIC & CV only)
+      // --- EMAIL HTML (Comic Sans, left-aligned, signature + disclaimer) ---
       const subject = "🚀 Hello from Your New HR AI Agent – Let’s Get You Officially Onboarded!";
 
       const html = `
-        <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto;">
+        <div style="font-family: 'Comic Sans MS', Comic Sans, cursive, Arial, sans-serif; font-size: 16px; color: #212121; line-height: 1.7; text-align: left; margin:0; padding:0; max-width:600px;">
           <p>Dear <strong>${candidateName}</strong>,</p>
           <p>Welcome to the beginning of something amazing! 🌟</p>
           <p>
-            I’m your new HR AI Agent — here to make your onboarding experience smooth, seamless, and just a little more exciting!
+            I’m your new HR AI Agent — here to make your onboarding experience smooth, seamless, and just a little more exciting!<br/>
             While I might be powered by algorithms and data, my goal is simple: to help you feel connected, supported, and ready to thrive at <strong>${COMPANY_NAME}</strong>.
           </p>
           <p>
             As the first step to complete your profile, please reply with the following documents:
           </p>
-          <ul>
-            <li>✅ <strong>Copy of your CNIC</strong> (front & back, JPG or PNG format)</li>
-            <li>✅ <strong>Your latest CV/Resume</strong> (PDF)</li>
+          <ul style="margin:0 0 1em 2em;padding:0;">
+            <li style="margin-bottom:4px;">✅ <strong>Copy of your CNIC</strong> (front & back, JPG or PNG format)</li>
+            <li style="margin-bottom:4px;">✅ <strong>Your latest CV/Resume</strong> (PDF)</li>
           </ul>
           <p>
             <em>🎯 Your data is safe with me — always encrypted, confidential, and used only to make your experience better.</em>
@@ -134,12 +131,29 @@ module.exports = {
           <p>
             Can’t wait to be part of your journey at <strong>${COMPANY_NAME}</strong>!
           </p>
-          <p>
-            With excitement,<br/>
-            <strong>Your HR AI Agent 🤖</strong><br/>
-            Powered by People. Driven by Purpose.<br/>
-            <span style="color: #888;">${COMPANY_EMAIL} | ${COMPANY_CONTACT}</span>
-          </p>
+          <br/>
+          <div style="margin-bottom:16px;">
+            With excitement,<br/><br/>
+            Your HR AI Agent 🤖<br/>
+            Powered by People. Driven by Purpose.
+            <br/><br/>
+            T &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; +44 7451 285285<br/>
+            E &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; HR@mavensadvisor.com<br/>
+            W &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; www.mavensadvisor.com<br/>
+            <br/>
+            Mavens Advisor LLC<br/>
+            East Grand Boulevard, Detroit<br/>
+            Michigan, United States
+          </div>
+          <div style="margin: 32px 0 0 0;">
+            <div style="background:#f4f4f4; border-radius:7px; font-family:monospace; font-size:13px; color:#333; white-space:pre; padding:18px 12px; overflow-x:auto;">
+*********************************************************************************
+
+The information contained in this email (including any attachments) is intended only for the personal and confidential use of the recipient(s) named above. If you are not an intended recipient of this message, please notify the sender by replying to this message and then delete the message and any copies from your system. Any use, dissemination, distribution, or reproduction of this message by unintended recipients is not authorized and may be unlawful.
+
+*********************************************************************************
+            </div>
+          </div>
         </div>
       `;
 

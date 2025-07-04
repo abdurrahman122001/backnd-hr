@@ -1,26 +1,27 @@
-  // backend/src/controllers/salarySettingsController.js
+// backend/src/controllers/salarylipFieldsController.js
 
-const SalarySettings = require("../models/SalarySettings");
+const SalarySlipFields = require("../models/SalarySlipFields");
 
-// GET /salary-settings
+// GET /salaryslip-settings
 exports.getForLoggedInUser = async (req, res) => {
   try {
     const owner = req.user._id;
-    const doc = await SalarySettings.findOne({ owner })
+    const doc = await SalarySlipFields.findOne({ owner })
       .lean()
-      .select("enabledPersonalFields enabledEmploymentFields enabledSalaryFields enabledDeductionFields");
+      .select("enabledPersonalFields enabledEmploymentFields enabledSalaryFields enabledDeductionFields enabledNetSalaryFields");
     return res.json({
       enabledPersonalFields: doc?.enabledPersonalFields || [],
       enabledEmploymentFields: doc?.enabledEmploymentFields || [],
       enabledSalaryFields: doc?.enabledSalaryFields || [],
       enabledDeductionFields: doc?.enabledDeductionFields || [],
+      enabledNetSalaryFields: doc?.enabledNetSalaryFields || [],
     });
   } catch (error) {
     return res.status(500).json({ error: "Server error" });
   }
 };
 
-// POST /salary-settings
+// POST /salaryslip-settings
 exports.updateForLoggedInUser = async (req, res) => {
   try {
     const owner = req.user._id;
@@ -28,17 +29,19 @@ exports.updateForLoggedInUser = async (req, res) => {
       enabledPersonalFields,
       enabledEmploymentFields,
       enabledSalaryFields,
-      enabledDeductionFields
+      enabledDeductionFields,
+      enabledNetSalaryFields
     } = req.body;
     if (
       !Array.isArray(enabledPersonalFields) ||
       !Array.isArray(enabledEmploymentFields) ||
       !Array.isArray(enabledSalaryFields) ||
-      !Array.isArray(enabledDeductionFields)
+      !Array.isArray(enabledDeductionFields) ||
+      !Array.isArray(enabledNetSalaryFields)
     ) {
       return res.status(400).json({ error: "Invalid payload" });
     }
-    const doc = await SalarySettings.findOneAndUpdate(
+    const doc = await SalarySlipFields.findOneAndUpdate(
       { owner },
       {
         $setOnInsert: { owner, createdAt: new Date() },
@@ -47,6 +50,7 @@ exports.updateForLoggedInUser = async (req, res) => {
           enabledEmploymentFields,
           enabledSalaryFields,
           enabledDeductionFields,
+          enabledNetSalaryFields,
           updatedAt: new Date(),
         },
       },
@@ -54,7 +58,7 @@ exports.updateForLoggedInUser = async (req, res) => {
         upsert: true,
         new: true,
         lean: true,
-        select: "enabledPersonalFields enabledEmploymentFields enabledSalaryFields enabledDeductionFields",
+        select: "enabledPersonalFields enabledEmploymentFields enabledSalaryFields enabledDeductionFields enabledNetSalaryFields",
       }
     );
     return res.json({
@@ -62,6 +66,7 @@ exports.updateForLoggedInUser = async (req, res) => {
       enabledEmploymentFields: doc.enabledEmploymentFields,
       enabledSalaryFields: doc.enabledSalaryFields,
       enabledDeductionFields: doc.enabledDeductionFields,
+      enabledNetSalaryFields: doc.enabledNetSalaryFields,
     });
   } catch (error) {
     return res.status(500).json({ error: "Server error" });

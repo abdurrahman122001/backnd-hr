@@ -26,7 +26,8 @@ const designationsRouter = require("./routes/designations");
 const docsRouter = require("./routes/docs");
 const employeeSalaryRouter = require("./routes/employeeSalary");
 const hierarchyController = require("./controllers/hierarchyController");
-const salarySettingsRoutes = require("./routes/salarySettings")
+const salarySettingsRoutes = require("./routes/salarySettings");
+const salarySlipFields = require("./routes/salarySlipFields");
 const loansRoutes = require('./routes/loans');
 const requireAuth = require("./middleware/auth");
 const onboardingRouter = require("./routes/onBoarding");
@@ -83,6 +84,7 @@ app.use("/api/employee-salary", requireAuth, employeeSalaryRouter);  // <--- THI
 app.use("/api/departments", requireAuth, departmentsRouter);
 app.use("/api/designations", requireAuth, designationsRouter);
 app.use("/api/salary-settings", requireAuth, salarySettingsRoutes);
+app.use("/api/salary-fields", requireAuth, salarySlipFields);
 app.use("/api/send-slip-email", requireAuth, sendSlipEmail);
 app.use("/api/onboarding", onboardingRouter);
 app.use("/api/loans", loansRoutes);

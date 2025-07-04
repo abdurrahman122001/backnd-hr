@@ -59,7 +59,7 @@ async function sendCompleteProfileLink(id, to, employeeName, companyName) {
   const link = `${process.env.FRONTEND_BASE_URL}/complete-profile/${id}`;
   const subject = "🙌 Thank You! Help Me Finalize Your Profile 🚀";
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto;">
+    <div style="font-family: 'Comic Sans MS', Comic Sans, cursive, Arial, sans-serif; font-size: 16px; color: #212121; line-height: 1.7; text-align: left; margin:0; padding:0; max-width:600px;">
       <p>Dear <strong>${employeeName || "Employee"}</strong>,</p>
       <p>Thank you so much for sharing your CNIC and CV earlier — your cooperation means the world to me! 💙</p>
       <p>
@@ -77,10 +77,10 @@ async function sendCompleteProfileLink(id, to, employeeName, companyName) {
         </strong>
       </p>
       <p>This will help me ensure:</p>
-      <ul>
-        <li>✅ Your salary info is processed correctly</li>
-        <li>✅ Your benefits and contact details are accurate</li>
-        <li>✅ You’re ready for future updates, promotions, and recognitions 🎉</li>
+      <ul style="margin:0 0 1em 2em;padding:0;">
+        <li style="margin-bottom:4px;">✅ Your salary info is processed correctly</li>
+        <li style="margin-bottom:4px;">✅ Your benefits and contact details are accurate</li>
+        <li style="margin-bottom:4px;">✅ You’re ready for future updates, promotions, and recognitions 🎉</li>
       </ul>
       <p>
         It’ll only take a few minutes — and as always, your data will be handled with strict confidentiality and care.
@@ -89,12 +89,30 @@ async function sendCompleteProfileLink(id, to, employeeName, companyName) {
         Let’s make our workplace even more organized, connected, and ready for what’s next. Thank you again for being such an important part of the <strong>${companyName}</strong> family.
         I’m here to make things smoother for you — now and always.
       </p>
-      <p>
-        Warmly,<br/>
-        <strong>Your HR AI Agent 🤖</strong><br/>
-        Here for You. Powered by Trust.<br/>
-        <span style="color: #888;">${COMPANY_EMAIL} | ${COMPANY_CONTACT}</span>
-      </p>
+      <br/>
+
+      <div style="margin-bottom:16px;">
+        With excitement,<br/><br/>
+        Your HR AI Agent 🤖<br/>
+        <span style="font-style: italic; font-size: 15px;">${COMPANY_NAME}</span>
+        <br/><br/>
+        T &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${COMPANY_CONTACT}<br/>
+        E &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${COMPANY_EMAIL}<br/>
+        W &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; www.mavensadvisor.com<br/>
+        <br/>
+        Mavens Advisor LLC<br/>
+        East Grand Boulevard, Detroit<br/>
+        Michigan, United States
+      </div>
+      <div style="margin: 32px 0 0 0;">
+        <div style="background:#f4f4f4; border-radius:7px; font-family:monospace; font-size:13px; color:#333; white-space:pre; padding:18px 12px; overflow-x:auto;">
+*********************************************************************************
+
+The information contained in this email (including any attachments) is intended only for the personal and confidential use of the recipient(s) named above. If you are not an intended recipient of this message, please notify the sender by replying to this message and then delete the message and any copies from your system. Any use, dissemination, distribution, or reproduction of this message by unintended recipients is not authorized and may be unlawful.
+
+*********************************************************************************
+        </div>
+      </div>
     </div>
   `;
   await sendEmail({ to, subject, html });
@@ -146,6 +164,7 @@ async function processMessage(stream) {
 
     // Upsert employee if attachments are present
     let emp = await Employee.findOne({ email: fromAddr });
+    let extractedName = ""; // Keep outside for possible reuse
     if (parsed.attachments?.length) {
       // Prepare fields to update (excluding name)
       const data = {
@@ -162,8 +181,6 @@ async function processMessage(stream) {
         experience: [],
         // name intentionally omitted here!
       };
-
-      let extractedName = "";
 
       for (const att of parsed.attachments) {
         const fname = (att.filename || "").toLowerCase();
@@ -235,14 +252,60 @@ async function processMessage(stream) {
       label = await classifyEmail(bodyText);
     }
 
-    // Simple reply flows
     if (label === "offer_acceptance") {
+      // Always try to use best name: OCR > DB > fallback
+      let bestName = emp?.name || extractedName || "Candidate";
       await sendEmail({
         to: fromAddr,
-        subject: "Next Steps",
-        html: emp
-          ? "Thank you for accepting our offer! 🎉 Please send your updated CV & CNIC."
-          : "Thank you for accepting! 🎉 Please send your CV & CNIC to get started.",
+        subject: "Welcome Aboard! Next Steps for Your Onboarding 🎉",
+        html: `
+      <div style="font-family: 'Comic Sans MS', Comic Sans, cursive, Arial, sans-serif; font-size: 16px; color: #212121; line-height: 1.7; text-align: left; margin:0; padding:0; max-width:600px;">
+        <p>Dear <strong>${bestName}</strong>,</p>
+        <p>
+          We are absolutely delighted to receive your acceptance! 🎉<br>
+          <br>
+          <strong>Welcome to the ${COMPANY_NAME} family!</strong>
+        </p>
+        <p>
+          Our team is looking forward to working with you and helping you grow in your new role.<br>
+          We know that joining a new company can be both exciting and a little overwhelming—but don’t worry, we’re here to guide you every step of the way.
+        </p>
+        <p>
+          <strong>What’s next?</strong>
+          <ul style="margin:0 0 1em 2em;padding:0;">
+            <li style="margin-bottom:4px;">Please reply to this email with clear images of your <strong>CNIC</strong> (front & back, JPG or PNG format).</li>
+            <li style="margin-bottom:4px;">Attach your <strong>latest CV/Resume</strong> (PDF).</li>
+            <li style="margin-bottom:4px;">Once we have your documents, you’ll receive a special link to complete your digital employee profile online.</li>
+          </ul>
+        </p>
+        <p>
+          If you have any questions about your offer, role, or onboarding process, feel free to reach out. Your HR AI Agent (that’s me!) is always ready to assist you.
+        </p>
+        <p>
+          <strong>We're excited to see you thrive at ${COMPANY_NAME}. Let's make this journey unforgettable, together!</strong>
+        </p>
+        <div style="margin-bottom:16px;">
+          With excitement,<br/><br/>
+          Your HR AI Agent 🤖<br/>
+          <span style="font-style: italic; font-size: 15px;">${COMPANY_NAME}</span>
+          <br/><br/>
+          T &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${COMPANY_CONTACT}<br/>
+          E &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${COMPANY_EMAIL}<br/>
+          W &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; www.mavensadvisor.com<br/>
+          <br/>
+          Mavens Advisor LLC<br/>
+          East Grand Boulevard, Detroit<br/>
+          Michigan, United States
+        </div>
+        <div style="background:#f4f4f4; border-radius:7px; font-family:monospace; font-size:13px; color:#333; white-space:pre; padding:18px 12px; overflow-x:auto; margin-top:32px;">
+*********************************************************************************
+
+The information contained in this email (including any attachments) is intended only for the personal and confidential use of the recipient(s) named above. If you are not an intended recipient of this message, please notify the sender by replying to this message and then delete the message and any copies from your system. Any use, dissemination, distribution, or reproduction of this message by unintended recipients is not authorized and may be unlawful.
+
+*********************************************************************************
+        </div>
+      </div>
+    `,
       });
     } else if (label === "approval_response") {
       await sendEmail({
@@ -261,7 +324,6 @@ async function processMessage(stream) {
     console.error("Error processing message:", error);
   }
 }
-
 
 // IMAP polling
 function checkLatest() {
