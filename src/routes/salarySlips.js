@@ -14,7 +14,6 @@ const allowances = [
   ['Conveyance Allowance', 'conveyanceAllowance'],
   ['Medical Allowance', 'medicalAllowance'],
   ['Utility Allowance', 'utilityAllowance'],
-  
   ['Overtime Compensation', 'overtimeComp'],
   ['Dislocation Allowance', 'dislocationAllowance'],
   ['Leave Encashment', 'leaveEncashment'],
@@ -44,31 +43,78 @@ const deductions = [
   ['Tax Deduction', 'taxDeduction'],
 ];
 
-// GET salary slips - all slips or filtered by employee
+// Utility: Calculate net salary
+function calcNet(slip) {
+  const totalAllow = allowances.reduce((sum, [, key]) => sum + (Number(slip[key]) || 0), 0);
+  const totalDed  = deductions.reduce((sum, [, key]) => sum + (Number(slip[key]) || 0), 0);
+  return totalAllow - totalDed;
+}
+
+// ---------- GET salary slips (all or filtered by employee) ----------
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { employee } = req.query; // ?employee=xxx
-
-    // Query object
     let query = {};
-    if (employee) {
-      query.employee = employee; // Filter by employee if param is given
-    }
-
-    // Find and populate
+    if (employee) query.employee = employee;
     const slips = await SalarySlip
       .find(query)
       .populate('employee')
       .sort({ createdAt: -1 });
 
-    res.json({ slips });
+    // Add netSalary to each slip (virtual, not saved in DB)
+    const slipsWithNet = slips.map(slip => {
+      const slipObj = slip.toObject();
+      slipObj.netSalary = calcNet(slipObj);
+      return slipObj;
+    });
+
+    res.json({ slips: slipsWithNet });
   } catch (err) {
     console.error(err);
     res.status(500).json({ status: 'error', message: err.message });
   }
 });
 
-// Download PDF
+// ---------- PATCH: Update salary slip fields ----------
+router.patch('/:id', requireAuth, async (req, res) => {
+  try {
+    const allowedFields = [
+      ...allowances.map(([_, key]) => key),
+      ...deductions.map(([_, key]) => key),
+      // add more updatable fields if needed
+    ];
+    const updates = {};
+    for (let key of Object.keys(req.body)) {
+      if (allowedFields.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ status: 'error', message: 'No valid fields to update.' });
+    }
+
+    const slip = await SalarySlip.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true }
+    ).populate('employee');
+
+    if (!slip) {
+      return res.status(404).json({ status: 'error', message: 'Salary slip not found.' });
+    }
+
+    // Add netSalary to response
+    const slipObj = slip.toObject();
+    slipObj.netSalary = calcNet(slipObj);
+
+    res.json({ status: 'success', slip: slipObj });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// ---------- GET: Download Salary Slip PDF ----------
 router.get('/:id/download', requireAuth, async (req, res) => {
   try {
     const slip = await SalarySlip
@@ -78,11 +124,6 @@ router.get('/:id/download', requireAuth, async (req, res) => {
     if (!slip) {
       return res.status(404).json({ status: 'error', message: 'Not found' });
     }
-
-    // (OPTIONAL) If you want to keep owner check, uncomment below:
-    // if (slip.employee.owner.toString() !== req.user._id.toString()) {
-    //   return res.status(403).json({ status: 'error', message: 'Forbidden' });
-    // }
 
     // Setup PDF
     const doc = new PDFDocument({ size: 'A4', margin: 40 });
@@ -150,7 +191,6 @@ router.get('/:id/download', requireAuth, async (req, res) => {
         doc.text(label, col1X, y);
         doc.text(val.toFixed(2), col1X + 150, y, { width: 60, align: 'right' });
       }
-
       // Deductions column
       if (deductions[i]) {
         const [label, key] = deductions[i];

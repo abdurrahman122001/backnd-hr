@@ -40,6 +40,7 @@ const leaveRecordsRouter = require('./routes/leaveRecords');
 const certificateRoutes = require('./routes/certificate');
 // IMAP watcher
 const { startWatcher } = require("./watcher");
+const fontSettingRoute = require("./routes/fontSetting");
 
 const app    = express();
 // Wrap express in an HTTP server for Socket-IO
@@ -92,7 +93,7 @@ app.use('/api/loan', loansRoutes);
 app.use("/api/probation-periods", probationPeriodRouter);
 app.use('/api/leave-records', leaveRecordsRouter);
 app.use('/api', certificateRoutes);
-
+app.use("/api/font-setting", fontSettingRoute);
 app.post(
   "/api/hierarchy/create",
   requireAuth,
