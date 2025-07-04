@@ -92,7 +92,7 @@ async function sendCompleteProfileLink(id, to, employeeName, companyName) {
       <br/>
 
       <div style="margin-bottom:16px;">
-        With excitement,<br/><br/>
+        With excitement,<br/>
         Your HR AI Agent 🤖<br/>
         <span style="font-style: italic; font-size: 15px;">${COMPANY_NAME}</span>
         <br/><br/>
@@ -285,7 +285,7 @@ async function processMessage(stream) {
           <strong>We're excited to see you thrive at ${COMPANY_NAME}. Let's make this journey unforgettable, together!</strong>
         </p>
         <div style="margin-bottom:16px;">
-          With excitement,<br/><br/>
+          With excitement,<br/>
           Your HR AI Agent 🤖<br/>
           <span style="font-style: italic; font-size: 15px;">${COMPANY_NAME}</span>
           <br/><br/>

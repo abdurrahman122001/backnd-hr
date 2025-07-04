@@ -64,7 +64,7 @@ function formatNumberWithCommas(x) {
 // --- Signature Block (Comic Sans, links styled) ---
 const EMAIL_SIGNATURE = `
   <div style="font-family: 'Comic Sans MS', Comic Sans, cursive; font-size: 17px; margin-top:28px; margin-bottom:12px; line-height:1.6;">
-    Regards,<br><br>
+    Regards,<br>
     <span style="font-weight:bold;">Human Resource Department</span><br>
     <span style="font-style: italic;">Mavens Advisor</span><br><br>
     <div>
